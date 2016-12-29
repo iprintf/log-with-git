@@ -334,9 +334,13 @@ class Log:
         elif subject:
             iData = subject.encode()
             if data:
-                iData += b'\n\n' + data
+                iData += b'\n\n' + kyo.editHeadInfo(self.config, data, **args)
         else:
-            iData = b''
+#if 0    //kyo Comment Start 2016-12-29 13:43
+            iData = kyo.addHeadInfo(self.config, **args)
+#else
+            #  iData = b''
+#endif   //kyo Comment End   2016-12-29 13:43
         oData    = editContent(iData).decode()
 #if 1    //kyo Comment Start 2016-12-29 10:38
         if oData.encode() == iData:
@@ -351,16 +355,19 @@ class Log:
         assert subject != '', "aborting due to empty subject"
 
         # read other info
-        requests = self.makeRequests(**args)
 #if 1    //kyo Comment Start 2016-12-29 11:16
         if self.interactive:
+            requests = self.makeRequests(**args)
             i = interact.readMany(requests)
         else:
-            i = kyo.readMany(requests)
+            i = kyo.readMany(kyo.parseInfo(self.config, data), **args)
 
-        return dict(subject=subject, time=i['time'], scene=i['scene'],
+        d = dict(subject=subject, time=i['time'], scene=i['scene'],
                         people=i['people'], tag=i['tag'],
                         data=data, binary=binary);
+        print(d)
+        #  exit(0)
+        return d
 #else
         #  i        = interact.readMany(requests)
         #  time     =  i['time']

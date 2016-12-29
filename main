@@ -23,6 +23,7 @@ from sqlitestorage import SqliteStorage
 from xmlstorage import XmlStorage
 import interact
 import applib
+import kyo
 
 
 def failure_handler(data):
@@ -416,7 +417,11 @@ class App:
         fields, formater = self.parseDisplayFormat(fmt)
         result  = logger._list(fields, criteria, order)
         color   = False if fmt else True    # no color if display format specified
-        applib.pageOut(result, formater, color)
+#if 1    //kyo Comment Start 2016-12-29 16:35
+        applib.pageOut(result, formater, color, self.configs)
+#else
+        #  applib.pageOut(result, formater, color)
+#endif   //kyo Comment End   2016-12-29 16:35
 
 
     def procSearchArgs(self, args):
@@ -739,6 +744,9 @@ if __name__ == '__main__':
     # load config from file
     try:
         appConfigs = loadConfig()
+#if 1    //kyo Comment Start 2016-12-29 16:33
+        appConfigs.update(kyo.getConf(appConfigs))
+#endif   //kyo Comment End   2016-12-29 16:33
     except AssertionError:
         print(sys.exc_info()[1])
         exit(1)
