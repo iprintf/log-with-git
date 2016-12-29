@@ -7,6 +7,7 @@ import applib
 from timeutils import isodatetime
 from common import editContent
 import interact
+import kyo
 
 class Engine:
     """ Management class for engines
@@ -78,7 +79,12 @@ class Log:
     """ Log management class
     """
 
-    def __init__(self, config):
+#if 1    //kyo Comment Start 2016-12-29 11:15
+    def __init__(self, config, interactive=False):
+        self.interactive = interactive
+#else
+    #  def __init__(self, config):
+#endif   //kyo Comment End   2016-12-29 11:15
         self.config = config
         dataDir     = config['dataDir']
 
@@ -332,7 +338,7 @@ class Log:
         else:
             iData = b''
         oData    = editContent(iData).decode()
-#if 0    //kyo Comment Start 2016-12-29 10:38
+#if 1    //kyo Comment Start 2016-12-29 10:38
         if oData.encode() == iData:
             exit(0)
 #endif   //kyo Comment End   2016-12-29 10:38
@@ -346,14 +352,24 @@ class Log:
 
         # read other info
         requests = self.makeRequests(**args)
-        i        = interact.readMany(requests)
-        time     =  i['time']
-        scene    =  i['scene']
-        people   =  i['people']
-        tag      =  i['tag']
+#if 1    //kyo Comment Start 2016-12-29 11:16
+        if self.interactive:
+            i = interact.readMany(requests)
+        else:
+            i = kyo.readMany(requests)
 
-        return dict(subject=subject, time=time, scene=scene,
-                      people=people, tag=tag, data=data, binary=binary)
+        return dict(subject=subject, time=i['time'], scene=i['scene'],
+                        people=i['people'], tag=i['tag'],
+                        data=data, binary=binary);
+#else
+        #  i        = interact.readMany(requests)
+        #  time     =  i['time']
+        #  scene    =  i['scene']
+        #  people   =  i['people']
+        #  tag      =  i['tag']
+        #  return dict(subject=subject, time=time, scene=scene,
+                      #  people=people, tag=tag, data=data, binary=binary)
+#endif   //kyo Comment End   2016-12-29 11:16
 
     def preActionOfDelete(self, record):
         """ Confirm before deleting

@@ -197,7 +197,14 @@ class App:
             exit(0)
 
         assert len(args) > 0, "wrong arguments"
-        logger  = Log(self.configs)
+#if 1    //kyo Comment Start 2016-12-29 11:06
+        interactive = True if '-i' in args else False
+        if interactive == True:
+            args.remove("-i")
+        logger  = Log(self.configs, interactive)
+#else
+        #  logger  = Log(self.configs)
+#endif   //kyo Comment End   2016-12-29 11:06
         result  = self.simpleSearch(logger, args)
 
         ids = []
@@ -322,6 +329,12 @@ class App:
             help('add')
             exit(0)
 
+#if 1    //kyo Comment Start 2016-12-29 11:42
+        kyo_interactive = True if '-i' in args else False
+        if kyo_interactive == True:
+            args.remove("-i")
+#endif   //kyo Comment End   2016-12-29 11:42
+
         tag = _time = scene = people = message = subject = ''
         data = b''
         binary = False
@@ -362,7 +375,11 @@ class App:
             data = data.decode()
         if not _time:
             _time = isodatetime()
-        logger = Log(self.configs)
+#if 0    //kyo Comment Start 2016-12-29 11:42
+        logger = Log(self.configs, kyo_interactive)
+#else
+        #  logger = Log(self.configs)
+#endif   //kyo Comment End   2016-12-29 11:42
         logger.add(subject=subject, time=_time, scene=scene,
                    people=people, tag=tag, data=data,
                    binary=binary, interactive=interactive,
