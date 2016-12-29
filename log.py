@@ -332,6 +332,10 @@ class Log:
         else:
             iData = b''
         oData    = editContent(iData).decode()
+#if 0    //kyo Comment Start 2016-12-29 10:38
+        if oData.encode() == iData:
+            exit(0)
+#endif   //kyo Comment End   2016-12-29 10:38
         msgLines = oData.split('\n\n')
         subject  = msgLines.pop(0).strip()
         if not binary:  # accept data from editor only for non-binary
