@@ -139,19 +139,16 @@ def pageOut(records_data, formater, color=True):
         colorFunc = lambda x: x
 
     pager = Pager(['-XRF'])
+#if 1    //kyo Comment Start 2016-12-30 13:31
+    records_data = kyo.formater(records_data)
+#endif   //kyo Comment End   2016-12-30 13:31
     itr   = iter(records_data)
     try:
         first = next(itr)
-#if 1    //kyo Comment Start 2016-12-29 16:51
-        kyo.stripInfo(first)
-#endif   //kyo Comment End   2016-12-29 16:51
         pager.write(formater(first, colorFunc, n=0), isBytes=False)
     except StopIteration:
         return
     for data in itr:
-#if 1    //kyo Comment Start 2016-12-29 16:51
-        kyo.stripInfo(data)
-#endif   //kyo Comment End   2016-12-29 16:51
         pager.write(formater(data, colorFunc), isBytes=False)
     pager.go()
 

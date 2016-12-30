@@ -6,7 +6,7 @@ global kconfig
 
 interactive = False
 
-def init(config, args):
+def init(config, args): #{
     ln = len(args)
     if ln == 1:
         args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
@@ -22,6 +22,7 @@ def init(config, args):
         args.remove("-i")
 
     return kconfig
+#}
 
 def listDate(second=None): #{
     """
@@ -42,7 +43,7 @@ def getConf(config):#{
     """
     global kconfig
 
-    kconfig = {'tag': '', 'scene': '', 'people': '',
+    kconfig = {'tag': '', 'scene': '', 'people': '', 'cline': 10,
                'delim': '# Log Info {\n%s\n# Log Info }'}
 
     confKeys = config.keys()
@@ -50,6 +51,7 @@ def getConf(config):#{
     kconfig['scene'] = 'defaultScene' in confKeys and config['defaultScene']
     kconfig['people'] = 'defaultPeople' in confKeys and config['defaultPeople']
     kconfig['delim'] = 'infoDelim' in confKeys and config['infoDelim']
+    kconfig['cline'] = 'listCL' in confKeys and config['listCL']
     kconfig['time'] = isodatetime()
 
     return kconfig
@@ -124,15 +126,59 @@ def addHeadInfo(args):#{
     return loginfo.encode()
 #}
 
-def stripInfo(row):#{
+def stripHead(row):#{
     """
-    列表不显示文件头信息
+    列表内容过滤文件头信息
     """
     if not 'data' in row:
         return
     reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
     row['data'] = re.sub(re.compile(reg, re.S|re.I), '', row['data'])
+#}
+
+def stripEmptyLine(row, limitLine = True):#{
+    """
+    列表内容去除空行及限制内容显示行数
+    """
+    if not 'data' in row:
+        return
+
+    msgLine = row['data'].split('\n')
+    count = 0
+    newStr = ""
+    for line in msgLine:
+        if len(line) == 0:
+            continue
+        count = count + 1
+        if limitLine and count == kconfig['cline']:
+            break
+        newStr += line + '\n'
+    row['data'] = newStr.rstrip('\n')
+    #  print(row['data'])
+    #  exit(0)
+#}
+
+def rGenData(data): #{
+    """
+    重建列表生成嚣数据并且去除空行和限制显示内容行数
+    """
+    limitLine = False if len(data) == 1 else True
+    for row in data:
+        stripEmptyLine(row, limitLine)
+        yield row
+#}
+
+def formater(data): #{
+    """
+    将列表数据获取去除空行，限制显示行数以及去除文件头信息
+    """
+    lData = []
+    for row in data:
+        stripHead(row)
+        lData.append(row)
+
+    return rGenData(lData)
 #}
 
 def parseInfo(data): #{
