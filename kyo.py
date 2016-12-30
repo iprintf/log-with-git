@@ -30,6 +30,20 @@ def parseInfoString(kcfg, time, tag, scene, people):#{
     return kcfg['delim']%(loginfo)
 #}
 
+def infoPad(info): #{
+    """
+    检查文件头字段填充必备字段值
+    """
+    if not 'tag' in info:
+        info['tag'] = ''
+    if not 'scene' in info:
+        info['scene'] = ''
+    if not 'people' in info:
+        info['people'] = ''
+    if not 'time' in info:
+        info['time'] = ''
+#}
+
 def editHeadInfo(kcfg, data, **args):#{
     """
     编辑打开时对比文件头信息重新生成(如果文件头存在才生成)
@@ -38,6 +52,8 @@ def editHeadInfo(kcfg, data, **args):#{
     info = parseInfo(kcfg, dataStr)
     if len(info) == 0:
         return data
+
+    infoPad(info)
 
     time = args['time'] if args['time'] else info['time']
     tag = args['tag'] if args['tag'] else info['tag']
