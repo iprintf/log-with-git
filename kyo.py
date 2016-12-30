@@ -1,17 +1,36 @@
 import re
 from timeutils import isodatetime
+from time import *
 
 global kconfig
 
 interactive = False
 
 def init(config, args):
-    global interactive
+    ln = len(args)
+    if ln == 1:
+        args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
 
     getConf(config)
+
+    global interactive
     if '-i' in args:
         interactive = True
         args.remove("-i")
+
+    return kconfig
+
+def listDate(second=None): #{
+    """
+    单行列表时间显示格式
+    """
+    if not second: second = time.time()
+    nowYear = strftime("%Y", localtime(time()))
+    year = strftime("%Y", localtime(second))
+    if nowYear == year:
+        return strftime('%m-%d %H:%M', localtime(second))
+    return strftime('%y-%m-%d %H', localtime(second))
+#}
 
 def getConf(config):#{
     """
@@ -119,6 +138,7 @@ def parseInfo(data): #{
     """
     reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
+    #  print(data)
     #  print(reg, type(data))
     #  print(re.sub(re.compile(reg, re.S|re.I), '', data))
     info = re.findall(reg, data, re.S|re.I)
@@ -148,6 +168,9 @@ def readMany(dataInfo, args): #{
     if len(dataInfo) == 0:
         return args
 
+    #  print(args)
+    #  print(dataInfo)
+    #  exit(0)
     if not 'tag' in dataInfo:
         dataInfo['tag'] = args['tag']
     if not 'scene' in dataInfo:
@@ -157,9 +180,6 @@ def readMany(dataInfo, args): #{
     if not 'time' in dataInfo:
         dataInfo['time'] = args['time']
 
-    #  print(args)
-    #  print(data)
-    #  exit(0)
 
     return dataInfo
 #}
