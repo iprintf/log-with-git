@@ -349,8 +349,15 @@ class App:
             subject  = msgLines.pop(0)
             data     = '\n\n'.join(msgLines).encode()
 
-        interactive = not subject
-        if interactive and not os.isatty(sys.stdin.fileno()):
+#if 1    //kyo Comment Start 2016-12-30 16:05
+        interactive = os.isatty(sys.stdin.fileno())
+        if subject and data:
+            interactive = False
+        if not subject and not interactive:
+#else
+        #  interactive = not subject
+        #  if interactive and not os.isatty(sys.stdin.fileno()):
+#endif   //kyo Comment End   2016-12-30 16:05
             msg = "no -m option, assume interactive mode, but stdin is not a terminal"
             raise applib.NotTerminalException(msg)
 
