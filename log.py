@@ -365,7 +365,7 @@ class Log:
         d = dict(subject=subject, time=i['time'], scene=i['scene'],
                         people=i['people'], tag=i['tag'],
                         data=data, binary=binary);
-        print(d)
+        #  print(d)
         #  exit(0)
         return d
 #else

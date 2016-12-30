@@ -115,7 +115,7 @@ def makeOneRequest(name, default, datatype, reader, desc):
                 default=default, reader=actual_reader)
 
 
-#if 0    //kyo Comment Start 2016-12-29 16:36
+#if 1    //kyo Comment Start 2016-12-29 16:36
 def pageOut(records_data, formater, color=True, config = False):
 #else
 #  def pageOut(records_data, formater, color=True):
