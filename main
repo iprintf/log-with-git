@@ -198,14 +198,7 @@ class App:
             exit(0)
 
         assert len(args) > 0, "wrong arguments"
-#if 1    //kyo Comment Start 2016-12-29 11:06
-        interactive = True if '-i' in args else False
-        if interactive == True:
-            args.remove("-i")
-        logger  = Log(self.configs, interactive)
-#else
-        #  logger  = Log(self.configs)
-#endif   //kyo Comment End   2016-12-29 11:06
+        logger  = Log(self.configs)
         result  = self.simpleSearch(logger, args)
 
         ids = []
@@ -330,12 +323,6 @@ class App:
             help('add')
             exit(0)
 
-#if 1    //kyo Comment Start 2016-12-29 11:42
-        kyo_interactive = True if '-i' in args else False
-        if kyo_interactive == True:
-            args.remove("-i")
-#endif   //kyo Comment End   2016-12-29 11:42
-
         tag = _time = scene = people = message = subject = ''
         data = b''
         binary = False
@@ -376,11 +363,7 @@ class App:
             data = data.decode()
         if not _time:
             _time = isodatetime()
-#if 0    //kyo Comment Start 2016-12-29 11:42
-        logger = Log(self.configs, kyo_interactive)
-#else
-        #  logger = Log(self.configs)
-#endif   //kyo Comment End   2016-12-29 11:42
+        logger = Log(self.configs)
         logger.add(subject=subject, time=_time, scene=scene,
                    people=people, tag=tag, data=data,
                    binary=binary, interactive=interactive,
@@ -417,11 +400,7 @@ class App:
         fields, formater = self.parseDisplayFormat(fmt)
         result  = logger._list(fields, criteria, order)
         color   = False if fmt else True    # no color if display format specified
-#if 1    //kyo Comment Start 2016-12-29 16:35
-        applib.pageOut(result, formater, color, self.configs)
-#else
-        #  applib.pageOut(result, formater, color)
-#endif   //kyo Comment End   2016-12-29 16:35
+        applib.pageOut(result, formater, color)
 
 
     def procSearchArgs(self, args):
@@ -739,14 +718,10 @@ def loadConfig():
         appConfigs[k] = v
     return appConfigs
 
-
 if __name__ == '__main__':
     # load config from file
     try:
         appConfigs = loadConfig()
-#if 1    //kyo Comment Start 2016-12-29 16:33
-        appConfigs.update(kyo.getConf(appConfigs))
-#endif   //kyo Comment End   2016-12-29 16:33
     except AssertionError:
         print(sys.exc_info()[1])
         exit(1)
@@ -754,6 +729,10 @@ if __name__ == '__main__':
         print(sys.exc_info()[1])
         help(ofile=sys.stderr)
         exit(1)
+
+#if 1    //kyo Comment Start 2016-12-30 11:29
+    kyo.init(appConfigs, sys.argv)
+#endif   //kyo Comment End   2016-12-30 11:29
 
     ln = len(sys.argv)
     if ln == 1 or (ln == 2 and '--help' in sys.argv):

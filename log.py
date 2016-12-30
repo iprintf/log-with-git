@@ -79,12 +79,7 @@ class Log:
     """ Log management class
     """
 
-#if 1    //kyo Comment Start 2016-12-29 11:15
-    def __init__(self, config, interactive=False):
-        self.interactive = interactive
-#else
-    #  def __init__(self, config):
-#endif   //kyo Comment End   2016-12-29 11:15
+    def __init__(self, config):
         self.config = config
         dataDir     = config['dataDir']
 
@@ -334,18 +329,13 @@ class Log:
         elif subject:
             iData = subject.encode()
             if data:
-                iData += b'\n\n' + kyo.editHeadInfo(self.config, data, **args)
+#if 1    //kyo Comment Start 2016-12-30 11:23
+                iData += b'\n\n' + kyo.editHeadInfo(data, args)
         else:
-#if 0    //kyo Comment Start 2016-12-29 13:43
-            iData = kyo.addHeadInfo(self.config, **args)
-#else
-            #  iData = b''
-#endif   //kyo Comment End   2016-12-29 13:43
+            iData = kyo.addHeadInfo(args)
         oData    = editContent(iData).decode()
-#if 1    //kyo Comment Start 2016-12-29 10:38
         if oData.encode() == iData:
             exit(0)
-#endif   //kyo Comment End   2016-12-29 10:38
         msgLines = oData.split('\n\n')
         subject  = msgLines.pop(0).strip()
         if not binary:  # accept data from editor only for non-binary
@@ -355,12 +345,11 @@ class Log:
         assert subject != '', "aborting due to empty subject"
 
         # read other info
-#if 1    //kyo Comment Start 2016-12-29 11:16
-        if self.interactive:
+        if kyo.interactive:
             requests = self.makeRequests(**args)
             i = interact.readMany(requests)
         else:
-            i = kyo.readMany(kyo.parseInfo(self.config, data), **args)
+            i = kyo.readMany(kyo.parseInfo(data), args)
 
         d = dict(subject=subject, time=i['time'], scene=i['scene'],
                         people=i['people'], tag=i['tag'],
@@ -368,7 +357,22 @@ class Log:
         #  print(d)
         #  exit(0)
         return d
+
 #else
+                #  iData += b'\n\n' + data
+        #  else:
+            #  iData = b''
+        #  oData    = editContent(iData).decode()
+        #  msgLines = oData.split('\n\n')
+        #  subject  = msgLines.pop(0).strip()
+        #  if not binary:  # accept data from editor only for non-binary
+            #  data = '\n\n'.join(msgLines)
+
+        #  # empty subject, abort
+        #  assert subject != '', "aborting due to empty subject"
+        #  # read other info
+        #  requests = self.makeRequests(**args)
+        #  i = interact.readMany(requests)
         #  i        = interact.readMany(requests)
         #  time     =  i['time']
         #  scene    =  i['scene']
@@ -376,7 +380,7 @@ class Log:
         #  tag      =  i['tag']
         #  return dict(subject=subject, time=time, scene=scene,
                       #  people=people, tag=tag, data=data, binary=binary)
-#endif   //kyo Comment End   2016-12-29 11:16
+#endif   //kyo Comment End   2016-12-30 11:23
 
     def preActionOfDelete(self, record):
         """ Confirm before deleting

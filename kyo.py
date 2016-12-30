@@ -1,24 +1,45 @@
 import re
+from timeutils import isodatetime
+
+global kconfig
+
+interactive = False
+
+def init(config, args):
+    global interactive
+
+    getConf(config)
+    if '-i' in args:
+        interactive = True
+        args.remove("-i")
 
 def getConf(config):#{
     """
     获取kyo自定义配置信息
     默认字段值及文件头信息定界符设置
     """
-    c = {}
-    confKeys = config.keys()
-    c['tag'] = 'defaultTag' in confKeys and config['defaultTag'] or ""
-    c['scene'] = 'defaultScene' in confKeys and config['defaultScene'] or ""
-    c['people'] = 'defaultPeople' in confKeys and config['defaultPeople'] or ""
-    if 'infoDelim' in confKeys:
-        c['delim'] = config['infoDelim']
-    else:
-        c['delim'] = '# Log Info {\n%s\n# Log Info }'
+    global kconfig
 
-    return c
+    kconfig = {'tag': '', 'scene': '', 'people': '',
+               'delim': '# Log Info {\n%s\n# Log Info }'}
+
+    confKeys = config.keys()
+    kconfig['tag'] = 'defaultTag' in confKeys and config['defaultTag']
+    kconfig['scene'] = 'defaultScene' in confKeys and config['defaultScene']
+    kconfig['people'] = 'defaultPeople' in confKeys and config['defaultPeople']
+    kconfig['delim'] = 'infoDelim' in confKeys and config['infoDelim']
+    kconfig['time'] = isodatetime()
+
+    return kconfig
 #}
 
-def parseInfoString(kcfg, time, tag, scene, people):#{
+def parseInfoString(info, args):#{
+
+    time = args['time'] if args['time'] else info['time']
+    tag = args['tag'] if args['tag'] else info['tag']
+    scene = args['scene'] if args['scene'] else info['scene']
+    people = args['people'] if args['people'] else info['people']
+
     loginfo = '#    time   = ' + time
     if scene:
         loginfo += '\n#    scene  = ' + scene
@@ -27,7 +48,7 @@ def parseInfoString(kcfg, time, tag, scene, people):#{
     if tag:
         loginfo += '\n#    tag    = ' + tag
 
-    return kcfg['delim']%(loginfo)
+    return kconfig['delim']%(loginfo)
 #}
 
 def infoPad(info): #{
@@ -42,64 +63,61 @@ def infoPad(info): #{
         info['people'] = ''
     if not 'time' in info:
         info['time'] = ''
+
+    return info
 #}
 
-def editHeadInfo(kcfg, data, **args):#{
+def editHeadInfo(data, args):#{
     """
     编辑打开时对比文件头信息重新生成(如果文件头存在才生成)
     """
+    if interactive:
+        return data
+
     dataStr = data.decode()
-    info = parseInfo(kcfg, dataStr)
+    info = parseInfo(dataStr)
     if len(info) == 0:
         return data
 
-    infoPad(info)
-
-    time = args['time'] if args['time'] else info['time']
-    tag = args['tag'] if args['tag'] else info['tag']
-    scene = args['scene'] if args['scene'] else info['scene']
-    people = args['people'] if args['people'] else info['people']
-
-    loginfo = parseInfoString(kcfg, time, tag, scene, people)
+    loginfo = parseInfoString(infoPad(info), args)
 
     #  print(loginfo)
     #  exit(0)
-    reg = kcfg['delim']%('(.*)')
+    reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
     return re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr).encode()
 #}
 
-def addHeadInfo(kcfg, **args):#{
+def addHeadInfo(args):#{
     """
     添加新日志获取文件头字段信息
     根据命令参数及默认值自动生成文件头信息
     """
-    time = args['time'] if args['time'] else isodatetime()
-    tag = args['tag'] if args['tag'] else kcfg['tag']
-    scene = args['scene'] if args['scene'] else kcfg['scene']
-    people = args['people'] if args['people'] else kcfg['people']
+    if interactive:
+        return b''
 
-    loginfo = tag + '\n\n' + parseInfoString(kcfg, time, tag, scene, people)
+    tag = args['tag'] if args['tag'] else kconfig['tag']
+    loginfo = tag + '\n\n' + parseInfoString(kconfig, args)
 
     return loginfo.encode()
 #}
 
-def stripInfo(kcfg, row):#{
+def stripInfo(row):#{
     """
     列表不显示文件头信息
     """
     if not 'data' in row:
         return
-    reg = kcfg['delim']%('(.*)')
+    reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
     row['data'] = re.sub(re.compile(reg, re.S|re.I), '', row['data'])
 #}
 
-def parseInfo(kcfg, data): #{
+def parseInfo(data): #{
     """
     解析文件头返回字段字典
     """
-    reg = kcfg['delim']%('(.*)')
+    reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
     #  print(reg, type(data))
     #  print(re.sub(re.compile(reg, re.S|re.I), '', data))
@@ -123,7 +141,7 @@ def parseInfo(kcfg, data): #{
     return fields
 #}
 
-def readMany(dataInfo, **args): #{
+def readMany(dataInfo, args): #{
     """
     读取日志文件的特殊段并解析日志文件信息字段
     """

@@ -115,11 +115,7 @@ def makeOneRequest(name, default, datatype, reader, desc):
                 default=default, reader=actual_reader)
 
 
-#if 1    //kyo Comment Start 2016-12-29 16:36
-def pageOut(records_data, formater, color=True, config = False):
-#else
-#  def pageOut(records_data, formater, color=True):
-#endif   //kyo Comment End   2016-12-29 16:36
+def pageOut(records_data, formater, color=True):
     """ Apply color to the text, pipe the
     text to a pager, for a better viewing.
     the 'records_data' is a generator that
@@ -147,14 +143,14 @@ def pageOut(records_data, formater, color=True, config = False):
     try:
         first = next(itr)
 #if 1    //kyo Comment Start 2016-12-29 16:51
-        kyo.stripInfo(config, first)
+        kyo.stripInfo(first)
 #endif   //kyo Comment End   2016-12-29 16:51
         pager.write(formater(first, colorFunc, n=0), isBytes=False)
     except StopIteration:
         return
     for data in itr:
-#if 0    //kyo Comment Start 2016-12-29 16:51
-        kyo.stripInfo(config, data)
+#if 1    //kyo Comment Start 2016-12-29 16:51
+        kyo.stripInfo(data)
 #endif   //kyo Comment End   2016-12-29 16:51
         pager.write(formater(data, colorFunc), isBytes=False)
     pager.go()
