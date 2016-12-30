@@ -1,4 +1,12 @@
-kyo修改说明：
+A log program that can add, delete, edit, list and search entries, it syncs data with the server using git, all data that sent to the server are encrypted, plaintext data that is sensitive only exposed on the client side.
+
+See LICENSE for license agreement.
+
+See INSTALL for installation instructions.
+
+2016-12-29:
+
+kyo修改说明
     编辑结束对比文本否改变，如无改变则不做任何事
     由参数-i来控制是否交互收集信息(默认为不交互)
     收集的信息字段基本上都应该有默认值(默认值可通过配置文件来设置)
