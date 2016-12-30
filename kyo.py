@@ -11,6 +11,9 @@ def init(config, args):
     if ln == 1:
         args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
 
+    if ln == 2 and args[1] == 'edit':
+        args.append('-1')
+
     getConf(config)
 
     global interactive
