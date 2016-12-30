@@ -72,6 +72,8 @@ def stripInfo(kcfg, row):#{
     """
     列表不显示文件头信息
     """
+    if not 'data' in row:
+        return
     reg = kcfg['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
     row['data'] = re.sub(re.compile(reg, re.S|re.I), '', row['data'])
