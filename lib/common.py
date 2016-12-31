@@ -7,6 +7,7 @@ def editContent(content=None):
     'content' is byte, the returned one is byte also
     """
     tmpfile = tempfile.NamedTemporaryFile(delete=False)
+    kyo.creatRunFile(tmpfile.name)
     if content:
         tmpfile.write(content)
         tmpfile.flush()
@@ -21,5 +22,5 @@ def editContent(content=None):
     p.wait()
     tmpfile.seek(0)
     content = tmpfile.read()
-    os.unlink(tmpfile.name)
+    #  os.unlink(tmpfile.name)
     return content

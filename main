@@ -30,6 +30,7 @@ def failure_handler(data):
     """For called by the log adding/editing method,
     in case of failure, to prevent data loss.
     """
+    kyo.quit(errCode = 1)
     tmpfile = tempfile.NamedTemporaryFile(delete=False)
     tmpfile.write(data.encode())
     tmpfile.close()
@@ -221,8 +222,7 @@ class App:
             x = [E(r) for r in result]
 #if 1    //kyo Comment Start 2016-12-30 15:45
             if len(x) == 0:
-                print('错误: 没有匹配到编辑日志!')
-                return
+                kyo.quit('错误: 没有匹配到编辑日志!')
 #endif   //kyo Comment End   2016-12-30 15:45
             idx, picked = interact.printAndPick(x, lineMode=True, default=-1)
             if picked:  # user picked one
@@ -377,15 +377,13 @@ class App:
             _time = isodatetime()
 #if 1    //kyo Comment Start 2016-12-31 11:23
         if binary and not subject:
-            msg = "错误: 二进制数据必须使用-m选项!"
-            raise applib.NotTerminalException(msg)
+            kyo.quit("错误: 二进制数据必须使用-m选项!")
 
         if content:
             data = content + data
         if kyo.isPipe and interactive:
             if not kyo.isEditor and not data.strip().rstrip('\n'):
-                msg = "错误: 标准输入或管道中没有数据!"
-                raise applib.NotTerminalException(msg)
+                kyo.quit("错误: 标准输入或管道中没有数据!")
             subject, data = kyo.splitSubject(data)
             interactive = not subject
 
@@ -393,7 +391,7 @@ class App:
         #  print('subject: ', subject)
         #  print('data: ', data, type(data))
         #  print('interactive: ', interactive)
-        #  exit(0)
+        #  kyo.quit()
 #endif   //kyo Comment End   2016-12-31 11:23
         logger = Log(self.configs)
         logger.add(subject=subject, time=_time, scene=scene,
@@ -796,12 +794,14 @@ if __name__ == '__main__':
             app.man(sys.argv[2:])
         else:
             raise applib.InvalidCmdException('unrecognized command: %s' % cmd)
+        kyo.quit()
     except IndexError:
         print('argument error', file=sys.stderr)
         help(ofile=sys.stderr)
-        exit(1)
+        kyo.quit(errCode = 1)
     except BrokenPipeError:
         pass
+        kyo.quit()
     except (AssertionError,
             applib.InvalidTimeException,
             applib.InvalidReException,
@@ -809,4 +809,8 @@ if __name__ == '__main__':
             applib.InvalidCmdException,
             applib.NotTerminalException) as e:
         print(e, file=sys.stderr)
-        exit(1)
+        kyo.quit(errCode = 1)
+    except Exception as e:
+        kyo.quit(errCode = 1)
+
+

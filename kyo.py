@@ -2,18 +2,24 @@ import re
 import sys, os
 from timeutils import isodatetime
 from time import *
+import traceback
+from ifix import lastSaveErrorChk
 
-global kconfig, interactive, isEdit, isEditor, isPipe, stdinNo
+global kconfig, interactive, isEdit, isEditor, isPipe, stdinNo, isAdd
+global runFile, logID
 
 interactive = False
-isEdit = False
-isEditor = False
-isPipe = False
-stdinNo = False
+isEdit      = False
+isAdd       = False
+isEditor    = False
+isPipe      = False
+stdinNo     = False
+runFile     = False
+logID       = False
 
-def init(config, args): #{
+def parseArgs(args): #{
     """
-    初始化操作，截取程序参数处理
+    处理程序参数
     """
     ln = len(args)
     #  如果没有参数则进入单行列表
@@ -26,8 +32,10 @@ def init(config, args): #{
         isEdit = True
         ln == 2 and args.append('-1')
 
-    #  获取处理配置文件的选项
-    getConf(config)
+    #  如果是添加日志，修改添加标识
+    global isAdd
+    if ln >= 2 and args[1] == 'add':
+        isAdd = True
 
     #  判断是否有-e选项，修改标识
     global isEditor
@@ -40,6 +48,46 @@ def init(config, args): #{
     if '-i' in args:
         interactive = True
         args.remove("-i")
+#}
+
+def creatRunFile(tmpfile): #{
+    global runFile
+    if logID:
+        runFile += logID[0:6]
+    runFile += tmpfile.replace('/', '_') + '.lock'
+    try:
+        fp = open(runFile, 'w+')
+        fp.close()
+    except:
+        quit(runFile + '\n错误: 锁文件生成失败!', 1)
+#}
+
+def runConfig(config): #{
+    """
+    运行配置，添加或编辑状态记录
+    """
+    if (isPipe and not isEditor) or not (isAdd or isEdit):
+        return
+
+    global runFile
+    runPath = config['dataDir'] + '/run'
+    if not os.path.exists(runPath):
+        os.mkdir(runPath)
+
+    lastSaveErrorChk(runPath)
+
+    opTxt = 'add' if isAdd else ''
+    runFile = runPath + '/' + opTxt
+#}
+
+def init(config, args): #{
+    """
+    初始化操作，截取程序参数处理
+    """
+    parseArgs(args)
+
+    #  获取处理配置文件的选项
+    getConf(config)
 
     #  判断数据来源是否为管道或标准输入
     global stdinNo
@@ -48,8 +96,10 @@ def init(config, args): #{
     isPipe = not os.isatty(stdinNo)
 
     if isPipe and isEdit:
-        print('错误: 编辑不支持管道或标准输入!')
-        exit(0)
+        quit('错误: 编辑不支持管道或标准输入!', 1)
+
+    #  运行状态记录配置
+    runConfig(config)
 
     return kconfig
 #}
@@ -140,8 +190,7 @@ def editHeadInfo(subject, data, args):#{
     info = parseInfo(dataStr)
     if len(info) != 0:
         loginfo = parseInfoString(infoPad(info), args)
-        #  print(loginfo)
-        #  exit(0)
+        #  quit(loginfo, 0)
         reg = kconfig['delim']%('(.*)')
         reg = reg.replace(' ', ' ?')
         data = re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr)
@@ -199,8 +248,7 @@ def stripEmptyLine(row, limitLine = True):#{
             break
         newStr += line + '\n'
     row['data'] = newStr.rstrip('\n')
-    #  print(row['data'])
-    #  exit(0)
+    #  quit(row['data'])
 #}
 
 def rGenData(data): #{
@@ -262,8 +310,7 @@ def readMany(dataInfo, args): #{
         return args
 
     #  print(args)
-    #  print(dataInfo)
-    #  exit(0)
+    #  quit(dataInfo)
     if not 'tag' in dataInfo:
         dataInfo['tag'] = args['tag']
     if not 'scene' in dataInfo:
@@ -282,4 +329,39 @@ def splitSubject(message): #{
     subject  = msgLines.pop(0)
     data = '\n\n'.join(msgLines)
     return subject, data
+#}
+
+def getTmpFile(ext = ''): #{
+    """
+    从锁文件名中截取临时文件名
+    """
+    tmpfile = os.path.basename(runFile).split('.lock' + ext).pop(0)
+    i = tmpfile.find('_')
+    return False if i == -1 else tmpfile[i:].replace('_', '/')
+#}
+
+def quit(errMsg = False, errCode = 0): #{
+    """
+    程序退出函数，可以退出前打印信息和指定程序错误码
+    如果不正常退出则保存锁文件等待下一次处理
+    """
+    if errCode != 0:
+        traceback.print_exc()
+
+    #  print("kyoQuit: ", runFile, "errCode: ", errCode)
+
+    if errMsg:
+        print(errMsg, file = sys.stderr)
+
+    if runFile and os.path.exists(runFile):
+        tmpfile = getTmpFile()
+        os.unlink(runFile)
+        if errCode == 0:
+            if os.path.exists(tmpfile):
+                os.unlink(tmpfile)
+        else:
+            traceback.print_exc(file = open(runFile + '.err', 'w+'))
+            print('存储失败, 数据存储于临时文件: ', tmpfile, file = sys.stderr)
+
+    exit(errCode)
 #}

@@ -178,6 +178,9 @@ class Log:
         else:
             id = ids[0]
 
+#if 1    //kyo Comment Start 2016-12-31 23:32
+        kyo.logID = id
+#endif   //kyo Comment End   2016-12-31 23:32
         oldRecord = Record.load(id)
         elements  = dict(oldRecord.elements())
         elements  = self.preActionOfEdit(elements)
@@ -330,7 +333,7 @@ class Log:
 
         oData    = editContent(iData).decode()
         if oData.encode() == iData:
-            exit(0)
+            kyo.quit()
         msgLines = oData.split('\n\n')
         subject  = msgLines.pop(0).strip()
         if not binary:  # accept data from editor only for non-binary
@@ -349,8 +352,7 @@ class Log:
         d = dict(subject=subject, time=i['time'], scene=i['scene'],
                         people=i['people'], tag=i['tag'],
                         data=data, binary=binary);
-        #  print(d)
-        #  exit(0)
+        #  kyo.quit(d)
         return d
 #else
         #  # read subject and data from editor
