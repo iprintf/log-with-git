@@ -328,7 +328,7 @@ class App:
             help('add')
             exit(0)
 
-        tag = _time = scene = people = message = subject = ''
+        tag = _time = scene = people = message = subject = content = ''
         data = b''
         binary = False
         while len(args) >= 2:
@@ -345,25 +345,27 @@ class App:
                 message  = args.pop(0)
         # subject and data from command line
         if message:
-            msgLines = message.rstrip('\n').split('\n\n')
-            subject  = msgLines.pop(0)
-            data     = '\n\n'.join(msgLines).encode()
-
-#if 1    //kyo Comment Start 2016-12-30 16:05
-        interactive = os.isatty(sys.stdin.fileno())
-        if subject and data:
-            interactive = False
-        if not subject and not interactive:
+#if 1    //kyo Comment Start 2016-12-31 12:02
+            subject, content  = kyo.splitSubject(message)
+        interactive = not subject
+        # data from stdin
+        stdinNo = sys.stdin.fileno()
+        isPipe = not os.isatty(stdinNo)
+        if isPipe:
+            stdin = os.fdopen(stdinNo, 'rb')
 #else
+            #  msgLines = message.rstrip('\n').split('\n\n')
+            #  subject  = msgLines.pop(0)
+            #  data     = '\n\n'.join(msgLines).encode()
         #  interactive = not subject
         #  if interactive and not os.isatty(sys.stdin.fileno()):
-#endif   //kyo Comment End   2016-12-30 16:05
-            msg = "no -m option, assume interactive mode, but stdin is not a terminal"
-            raise applib.NotTerminalException(msg)
+            #  msg = "no -m option, assume interactive mode, but stdin is not a terminal"
+            #  raise applib.NotTerminalException(msg)
 
         # data from stdin
-        if not data and not os.isatty(sys.stdin.fileno()):
-            stdin = os.fdopen(sys.stdin.fileno(), 'rb')
+        #  if not data and not os.isatty(sys.stdin.fileno()):
+            #  stdin = os.fdopen(sys.stdin.fileno(), 'rb')
+#endif   //kyo Comment End   2016-12-31 12:02
             iData = stdin.read()
             if applib.isBinary(iData):
                 binary = True
@@ -375,6 +377,16 @@ class App:
             data = data.decode()
         if not _time:
             _time = isodatetime()
+#if 1    //kyo Comment Start 2016-12-31 11:23
+        if content:
+            data = content + data
+        if isPipe and interactive:
+            if not data.strip().rstrip('\n'):
+                msg = "错误: 标准输入或管道中没有数据!"
+                raise applib.NotTerminalException(msg)
+            subject, data = kyo.splitSubject(data)
+            interactive = not subject
+#endif   //kyo Comment End   2016-12-31 11:23
         logger = Log(self.configs)
         logger.add(subject=subject, time=_time, scene=scene,
                    people=people, tag=tag, data=data,

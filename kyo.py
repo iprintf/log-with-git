@@ -2,20 +2,30 @@ import re
 from timeutils import isodatetime
 from time import *
 
-global kconfig
+global kconfig, interactive, isEdit
 
 interactive = False
+isEdit = False
 
 def init(config, args): #{
+    """
+    初始化操作，截取程序参数处理
+    """
     ln = len(args)
+    #  如果没有参数则进入单行列表
     if ln == 1:
         args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
 
-    if ln == 2 and args[1] == 'edit':
-        args.append('-1')
+    #  如果是编辑日志，修改编辑标识，如果没有参数则默认编辑最后一条日志
+    global isEdit
+    if ln >= 2 and args[1] == 'edit':
+        isEdit = True
+        ln == 2 and args.append('-1')
 
+    #  获取处理配置文件的选项
     getConf(config)
 
+    #  判断是否需要交互收集日志信息
     global interactive
     if '-i' in args:
         interactive = True
@@ -98,10 +108,10 @@ def editHeadInfo(data, args):#{
     if interactive:
         return data
 
-    dataStr = data.decode()
+    dataStr = data if isinstance(data, str) else data.decode()
     info = parseInfo(dataStr)
     if len(info) == 0:
-        return data
+        return data if isinstance(data, bytes) else data.encode()
 
     loginfo = parseInfoString(infoPad(info), args)
 
@@ -109,7 +119,8 @@ def editHeadInfo(data, args):#{
     #  exit(0)
     reg = kconfig['delim']%('(.*)')
     reg = reg.replace(' ', ' ?')
-    return re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr).encode()
+    data = re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr)
+    return data if isinstance(data, bytes) else data.encode()
 #}
 
 def addHeadInfo(args):#{
@@ -229,6 +240,13 @@ def readMany(dataInfo, args): #{
     if not 'time' in dataInfo:
         dataInfo['time'] = args['time']
 
-
     return dataInfo
+#}
+
+def splitSubject(message): #{
+    splitStr = message.find('\n\n') == -1 and '\\n\\n' or '\n\n'
+    msgLines = message.rstrip('\n').split(splitStr)
+    subject  = msgLines.pop(0)
+    data = '\n\n'.join(msgLines)
+    return subject, data
 #}
