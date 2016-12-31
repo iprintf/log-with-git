@@ -2,10 +2,11 @@ import re
 from timeutils import isodatetime
 from time import *
 
-global kconfig, interactive, isEdit
+global kconfig, interactive, isEdit, isEditor
 
 interactive = False
 isEdit = False
+isEditor = False
 
 def init(config, args): #{
     """
@@ -24,6 +25,12 @@ def init(config, args): #{
 
     #  获取处理配置文件的选项
     getConf(config)
+
+    #  判断是否有-e选项，修改标识
+    global isEditor
+    if '-e' in args:
+        isEditor = True
+        args.remove("-i")
 
     #  判断是否需要交互收集日志信息
     global interactive
