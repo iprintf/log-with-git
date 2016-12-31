@@ -1,12 +1,15 @@
 import re
+import sys, os
 from timeutils import isodatetime
 from time import *
 
-global kconfig, interactive, isEdit, isEditor
+global kconfig, interactive, isEdit, isEditor, isPipe, stdinNo
 
 interactive = False
 isEdit = False
 isEditor = False
+isPipe = False
+stdinNo = False
 
 def init(config, args): #{
     """
@@ -38,6 +41,16 @@ def init(config, args): #{
         interactive = True
         args.remove("-i")
 
+    #  判断数据来源是否为管道或标准输入
+    global stdinNo
+    global isPipe
+    stdinNo = sys.stdin.fileno()
+    isPipe = not os.isatty(stdinNo)
+
+    if isPipe and isEdit:
+        print('错误: 编辑不支持管道或标准输入!')
+        exit(0)
+
     return kconfig
 #}
 
@@ -61,7 +74,8 @@ def getConf(config):#{
     global kconfig
 
     kconfig = {'tag': '', 'scene': '', 'people': '', 'cline': 10,
-               'editor': 'vim', 'delim': '# Log Info {\n%s\n# Log Info }'}
+               'editor': 'vim ', 'vimopt': '"+set ff=unix" "+set foldlevel=0"',
+               'delim': '# Log Info {\n%s\n# Log Info }'}
 
     confKeys = config.keys()
     kconfig['tag'] = 'defaultTag' in confKeys and config['defaultTag']
@@ -69,7 +83,10 @@ def getConf(config):#{
     kconfig['people'] = 'defaultPeople' in confKeys and config['defaultPeople']
     kconfig['delim'] = 'infoDelim' in confKeys and config['infoDelim']
     kconfig['cline'] = 'listCL' in confKeys and config['listCL']
-    kconfig['editor'] = 'editor' in confKeys and config['editor']
+    kconfig['vimopt'] = 'vimOpt' in confKeys and config['vimOpt']
+    kconfig['editor'] = 'editor' in confKeys and config['editor'] + ' '
+    if kconfig['editor'] == 'vim ':
+        kconfig['editor'] += kconfig['vimopt'] + ' '
     kconfig['time'] = isodatetime()
 
     return kconfig
@@ -109,38 +126,46 @@ def infoPad(info): #{
     return info
 #}
 
-def editHeadInfo(data, args):#{
+def editHeadInfo(subject, data, args):#{
     """
     编辑打开时对比文件头信息重新生成(如果文件头存在才生成)
     """
     if interactive:
-        return data
+        subject = subject.encode()
+        if data:
+            subject += b'\n\n' + data
+        return subject
 
     dataStr = data if isinstance(data, str) else data.decode()
     info = parseInfo(dataStr)
-    if len(info) == 0:
-        return data if isinstance(data, bytes) else data.encode()
+    if len(info) != 0:
+        loginfo = parseInfoString(infoPad(info), args)
+        #  print(loginfo)
+        #  exit(0)
+        reg = kconfig['delim']%('(.*)')
+        reg = reg.replace(' ', ' ?')
+        data = re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr)
 
-    loginfo = parseInfoString(infoPad(info), args)
-
-    #  print(loginfo)
-    #  exit(0)
-    reg = kconfig['delim']%('(.*)')
-    reg = reg.replace(' ', ' ?')
-    data = re.sub(re.compile(reg, re.S|re.I), loginfo, dataStr)
-    return data if isinstance(data, bytes) else data.encode()
+    data = data if isinstance(data, bytes) else data.encode()
+    return subject.encode() + b'\n\n' + data
 #}
 
-def addHeadInfo(args):#{
+def addHeadInfo(subject, data, args):#{
     """
     添加新日志获取文件头字段信息
     根据命令参数及默认值自动生成文件头信息
     """
     if interactive:
-        return b''
+        if not subject:
+            return b''
+        subject = subject.encode()
+        if data:
+            subject += b'\n\n' + data.encode()
+        return subject
 
-    tag = args['tag'] if args['tag'] else kconfig['tag']
-    loginfo = tag + '\n\n' + parseInfoString(kconfig, args)
+    if not subject:
+        subject = args['tag'] if args['tag'] else kconfig['tag']
+    loginfo = subject + '\n\n' + parseInfoString(kconfig, args) + '\n\n' + data
 
     return loginfo.encode()
 #}

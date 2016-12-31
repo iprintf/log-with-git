@@ -10,7 +10,12 @@ def editContent(content=None):
     if content:
         tmpfile.write(content)
         tmpfile.flush()
-    cmd = kyo.kconfig['editor'] + ' ' + tmpfile.name
+    if kyo.isPipe and kyo.isEditor  \
+            and kyo.kconfig['editor'].find('vim ') != -1:
+        cmd = 'vim - "+r' + tmpfile.name + '" "+w!' + tmpfile.name + '"'
+        cmd += ' ' + kyo.kconfig['vimopt']
+    else:
+        cmd = kyo.kconfig['editor'] + tmpfile.name
     p = subprocess.Popen(shlex.split(cmd))
     p.communicate()
     p.wait()

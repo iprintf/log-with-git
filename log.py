@@ -322,17 +322,12 @@ class Log:
         subject  = args.pop('subject')
         binary   = args.pop('binary')
 
-        # read subject and data from editor
-        if binary:
-            iData =  b'\n# Binary data is provided, therefore only the first\n'
-            iData += b'# line will be used for subject, empty message aborts.\n'
-        elif subject:
-            iData = subject.encode()
-            if data:
 #if 1    //kyo Comment Start 2016-12-30 11:23
-                iData += b'\n\n' + kyo.editHeadInfo(data, args)
+        if kyo.isEdit:
+            iData = kyo.editHeadInfo(subject, data, args)
         else:
-            iData = kyo.addHeadInfo(args)
+            iData = kyo.addHeadInfo(subject, data, args)
+
         oData    = editContent(iData).decode()
         if oData.encode() == iData:
             exit(0)
@@ -357,8 +352,14 @@ class Log:
         #  print(d)
         #  exit(0)
         return d
-
 #else
+        #  # read subject and data from editor
+        #  if binary:
+            #  iData =  b'\n# Binary data is provided, therefore only the first\n'
+            #  iData += b'# line will be used for subject, empty message aborts.\n'
+        #  elif subject:
+            #  iData = subject.encode()
+            #  if data:
                 #  iData += b'\n\n' + data
         #  else:
             #  iData = b''

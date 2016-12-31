@@ -349,10 +349,8 @@ class App:
             subject, content  = kyo.splitSubject(message)
         interactive = not subject
         # data from stdin
-        stdinNo = sys.stdin.fileno()
-        isPipe = not os.isatty(stdinNo)
-        if isPipe:
-            stdin = os.fdopen(stdinNo, 'rb')
+        if kyo.isPipe:
+            stdin = os.fdopen(kyo.stdinNo, 'rb')
 #else
             #  msgLines = message.rstrip('\n').split('\n\n')
             #  subject  = msgLines.pop(0)
@@ -378,14 +376,24 @@ class App:
         if not _time:
             _time = isodatetime()
 #if 1    //kyo Comment Start 2016-12-31 11:23
+        if binary and not subject:
+            msg = "错误: 二进制数据必须使用-m选项!"
+            raise applib.NotTerminalException(msg)
+
         if content:
             data = content + data
-        if isPipe and interactive:
-            if not data.strip().rstrip('\n'):
+        if kyo.isPipe and interactive:
+            if not kyo.isEditor and not data.strip().rstrip('\n'):
                 msg = "错误: 标准输入或管道中没有数据!"
                 raise applib.NotTerminalException(msg)
             subject, data = kyo.splitSubject(data)
             interactive = not subject
+
+        interactive = True if kyo.isEditor else interactive
+        #  print('subject: ', subject)
+        #  print('data: ', data, type(data))
+        #  print('interactive: ', interactive)
+        #  exit(0)
 #endif   //kyo Comment End   2016-12-31 11:23
         logger = Log(self.configs)
         logger.add(subject=subject, time=_time, scene=scene,
