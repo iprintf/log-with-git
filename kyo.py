@@ -30,7 +30,7 @@ def init(config, args): #{
     global isEditor
     if '-e' in args:
         isEditor = True
-        args.remove("-i")
+        args.remove("-e")
 
     #  判断是否需要交互收集日志信息
     global interactive
