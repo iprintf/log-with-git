@@ -1,5 +1,6 @@
 import os, shlex
 import tempfile, subprocess
+import kyo
 
 def editContent(content=None):
     """ Edit the content with vi editor, the input
@@ -9,7 +10,7 @@ def editContent(content=None):
     if content:
         tmpfile.write(content)
         tmpfile.flush()
-    cmd = 'vi ' + tmpfile.name
+    cmd = kyo.kconfig['editor'] + ' ' + tmpfile.name
     p = subprocess.Popen(shlex.split(cmd))
     p.communicate()
     p.wait()

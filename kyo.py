@@ -61,7 +61,7 @@ def getConf(config):#{
     global kconfig
 
     kconfig = {'tag': '', 'scene': '', 'people': '', 'cline': 10,
-               'delim': '# Log Info {\n%s\n# Log Info }'}
+               'editor': 'vim', 'delim': '# Log Info {\n%s\n# Log Info }'}
 
     confKeys = config.keys()
     kconfig['tag'] = 'defaultTag' in confKeys and config['defaultTag']
@@ -69,6 +69,7 @@ def getConf(config):#{
     kconfig['people'] = 'defaultPeople' in confKeys and config['defaultPeople']
     kconfig['delim'] = 'infoDelim' in confKeys and config['infoDelim']
     kconfig['cline'] = 'listCL' in confKeys and config['listCL']
+    kconfig['editor'] = 'editor' in confKeys and config['editor']
     kconfig['time'] = isodatetime()
 
     return kconfig
