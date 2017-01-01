@@ -179,7 +179,7 @@ class Log:
             id = ids[0]
 
 #if 1    //kyo Comment Start 2016-12-31 23:32
-        kyo.logID = id
+        kyo.genRunFile(id)
 #endif   //kyo Comment End   2016-12-31 23:32
         oldRecord = Record.load(id)
         elements  = dict(oldRecord.elements())
