@@ -6,8 +6,7 @@ def editContent(content=None):
     """ Edit the content with vi editor, the input
     'content' is byte, the returned one is byte also
     """
-    tmpfile = tempfile.NamedTemporaryFile(delete=False)
-    kyo.creatRunFile(tmpfile.name)
+    tmpfile = kyo.creatRunFile()
     if content:
         tmpfile.write(content)
         tmpfile.flush()
@@ -20,7 +19,5 @@ def editContent(content=None):
     p = subprocess.Popen(shlex.split(cmd))
     p.communicate()
     p.wait()
-    tmpfile.seek(0)
-    content = tmpfile.read()
-    #  os.unlink(tmpfile.name)
+    content = open(tmpfile.name, 'rb').read()
     return content
