@@ -4,9 +4,10 @@ from timeutils import isodatetime
 from time import *
 import traceback
 from ifix import lastSaveErrorChk
+import applib
 
 global kconfig, interactive, isEdit, isEditor, isPipe, stdinNo, isAdd
-global runFile, logID
+global runPath, runFile
 
 interactive = False
 isEdit      = False
@@ -14,8 +15,8 @@ isAdd       = False
 isEditor    = False
 isPipe      = False
 stdinNo     = False
+runPath     = False
 runFile     = False
-logID       = False
 
 def parseArgs(args): #{
     """
@@ -50,16 +51,31 @@ def parseArgs(args): #{
         args.remove("-i")
 #}
 
-def creatRunFile(tmpfile): #{
-    global runFile
-    if logID:
-        runFile += logID[0:6]
-    runFile += tmpfile.replace('/', '_') + '.lock'
+def creatRunFile(): #{
+    """
+    打开临时文件, 不存在创建
+    """
     try:
-        fp = open(runFile, 'w+')
-        fp.close()
+        fp = open(runFile, 'w+b')
     except:
         quit(runFile + '\n错误: 锁文件生成失败!', 1)
+
+    return fp
+#}
+
+def genRunFile(ids = None): #{
+    """
+    生成临时文件路径
+    """
+    global runFile
+
+    runFile = runPath + '/'
+    runFile += 'E' if isEdit else 'A'
+    randID = applib.genId(kconfig['time'])
+    if ids == None:
+        runFile += randID[0:11]
+    else:
+        runFile += ids[0:6] + randID[0:5]
 #}
 
 def runConfig(config): #{
@@ -69,15 +85,14 @@ def runConfig(config): #{
     if (isPipe and not isEditor) or not (isAdd or isEdit):
         return
 
-    global runFile
+    global runPath
     runPath = config['dataDir'] + '/run'
     if not os.path.exists(runPath):
         os.mkdir(runPath)
 
     lastSaveErrorChk(runPath)
 
-    opTxt = 'add' if isAdd else ''
-    runFile = runPath + '/' + opTxt
+    genRunFile()
 #}
 
 def init(config, args): #{
@@ -331,15 +346,6 @@ def splitSubject(message): #{
     return subject, data
 #}
 
-def getTmpFile(ext = ''): #{
-    """
-    从锁文件名中截取临时文件名
-    """
-    tmpfile = os.path.basename(runFile).split('.lock' + ext).pop(0)
-    i = tmpfile.find('_')
-    return False if i == -1 else tmpfile[i:].replace('_', '/')
-#}
-
 def quit(errMsg = False, errCode = 0): #{
     """
     程序退出函数，可以退出前打印信息和指定程序错误码
@@ -353,15 +359,12 @@ def quit(errMsg = False, errCode = 0): #{
     if errMsg:
         print(errMsg, file = sys.stderr)
 
-    if runFile and os.path.exists(runFile):
-        tmpfile = getTmpFile()
-        os.unlink(runFile)
+    if (isEdit or isAdd) and runFile and os.path.exists(runFile):
         if errCode == 0:
-            if os.path.exists(tmpfile):
-                os.unlink(tmpfile)
+            os.unlink(runFile)
         else:
             traceback.print_exc(file = open(runFile + '.err', 'w+'))
-            print('存储失败, 数据存储于临时文件: ', tmpfile, file = sys.stderr)
+            print('存储失败, 数据存储于临时文件: ', runFile, file = sys.stderr)
 
     exit(errCode)
 #}
