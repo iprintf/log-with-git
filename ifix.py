@@ -1,19 +1,23 @@
 import os
 from time import *
 
-def getErrFileMsg(filename): #{
-    errFile = filename.split('.lock.err')
-    if len(errFile) == 1:
+def parseErrFileName(runPath, filename): #{
+    """
+    判断是否为运行文件并且解析文件名提取信息
+    """
+    if filename.find('.') != -1 or len(filename) != 12:
         return False
-    errFile = errFile.pop(0)
-    i = errFile.find('_')
-    if i == -1:
+
+    op = filename[0:1]
+    if not (op == 'E' or op == 'A'):
         return False
+
     res = {}
-    res['id'] = errFile[0:i]
-    if res['id'] == 'add':
-        res['id'] = '0'
-    res['tmpfile'] = errFile[i:].replace('_', '/')
+    res['op'] = op
+    res['id'] = filename[1:7] if op == 'E' else '      '
+    res['file'] = runPath + '/' + filename
+    s = os.stat(res['file'])
+    res['time'] = strftime("%Y-%m-%d %H:%M", localtime(s.st_mtime))
     return res
 #}
 
@@ -31,70 +35,128 @@ def lastSaveErrorPormpt(errFileLists): #{
     errFileLists.sort(key = lambda x: x['id'])
     for errfile in errFileLists:
         msg = '    ' + str(n) + ': '
-        if errfile['id'] == '0':
-            msg += "       \033[31;1mA\033[0m  "
-        else:
-            msg += "\033[33m" + errfile['id'] + " \033[36;1mE\033[0m  "
-        msg += errfile['time'] + " " + errfile['tmpfile']
+        msg += cs(errfile['id'], '33') + ' '
+        msg += cs(errfile['op'], '36;1') + '  '
+        msg += errfile['time'] + ' '
+        msg += errfile['file'].replace(os.environ['HOME'], '~')
         print(msg)
         n = n + 1
 #}
 
 def cs(content, color = '0'): #{
-    return '\033[' + color + 'm' + content + '\033[0m'
+    #  组合带颜色的字符串
+    return '\033[' + color + 'm' + str(content) + '\033[0m'
 #}
 
+def _subMenuRun(errFile, ind, run = None): #{
+    if run == None:
+        if os.path.exists(errFile['file']):
+            os.system('less -XRF ' + errFile['file'])
+        else:
+            print(cs(errFile['file'] + ' 文件已经不存在啦!', '31;1'))
+        return
+    run(errFile, ind)
+#}
+
+
 def _subMenu(title, helpStr, errFileLists, run = None): #{
+    """
+    子菜单 选择错误列表文件进行操作
+    支持最终操作回调
+    """
     errLen = len(errFileLists)
+    if errLen == 1:
+        _subMenuRun(errFileLists.pop(0), 0, run)
+        return
+
+    if helpStr.find('\t') == -1:
+        helpStr = '\tSelect Error File List \033[32;1mN\033[0m, '+ helpStr +'.'
     while True:
         print("\n--- " + title + " Help ---")
-        print('\tSelect Error File List N, Show '+ helpStr +'.')
-        print('\tq -- Return Main Menu.')
-        print('\tl -- Show Error File List.')
+        print(helpStr)
+        print('\t\033[34;1mq\033[0m -- Return Main Menu.')
+        print('\t\033[34;1ml\033[0m -- Show Error File List.')
         i = input(cs(title, '34;1') + '>> ')
-        if i == 'q':
-            break
+        if i == 'q': break
         elif i == 'l':
             lastSaveErrorPormpt(errFileLists)
             continue
 
         num = int(i) if i.isdigit() else 0
-        if num < 1 or num > errLen:
-            continue
-        if run == None:
-            os.system('less -XRF ' + errFileLists[num - 1]['runfile'])
-        else:
-            run(errFileLists[num - 1])
+        if num < 1 or num > errLen: continue
+
+        _subMenuRun(errFileLists[num - 1], num - 1, run)
 #}
 
 def _list(errFileLists): #{
+    #  交互命令 - 列出错误文件
     lastSaveErrorPormpt(errFileLists)
 #}
+
 def _error(errFileLists): #{
-    _subMenu('Error', 'Error Message', errFileLists)
+    #  交互命令 - 进入错误信息输出子菜单
+    def run(errFile, ind):
+        efile = errFile['file'] + '.err'
+        if os.path.exists(efile):
+            os.system('less -XRF ' + efile)
+        else:
+            print(cs('发生了不可预见的错误!', '31;1'))
+    _subMenu('Error', 'Show Error Message', errFileLists, run)
 #}
+
 def _tmpfile(errFileLists): #{
-    def run(errFile):
-        os.system('less -XRF ' + errFile['tmpfile'])
-    _subMenu('TmpFile', 'tmpFile Content', errFileLists, run)
+    #  交互命令 - 进入查看编辑文件子菜单
+    _subMenu('TmpFile', 'Show tmpFile Content', errFileLists)
 #}
 
 def _source(errFileLists): #{
-    def run(errFile):
-        ids = errFile['id']
-        if ids == '0': return
-        os.system('log list ' + ids)
-    _subMenu('Source', 'Source Content', errFileLists, run)
+    #  交互命令 - 进入查看编辑原日志菜单(只有编辑错误才有效查看)
+    def run(errFile, ind):
+        if errFile['op'] == 'A':
+            print(cs('添加失败操作没有原日志内容!', '31;1'))
+            return
+        os.system('log list ' + errFile['id'])
+    _subMenu('Source', 'Show Source Content', errFileLists, run)
 #}
 
 def _open(errFileLists): #{
-    print('hello')
+    #  交互命令 - 打开
+    def run(errFile, ind):
+        if errFile['op'] == 'A':
+            print(cs('添加失败操作没有原日志内容!', '31;1'))
+            return
+        os.system('log list ' + errFile['id'])
+    _subMenu('Source', 'Show Source Content', errFileLists, run)
 #}
+
 def _repair(errFileLists): #{
-    print('hello')
+    #  交互命令 - 自动修复
+    def run(errFile, ind):
+        if errFile['op'] == 'E':
+            print(cs('编辑失败操作没有原日志内容!', '31;1'))
+            return
+        os.system('log add  < ' + errFile['file'])
+        if os.path.exists(errFile['file']):
+            os.unlink(errFile['file'])
+        if os.path.exists(errFile['file'] + '.err'):
+            os.unlink(errFile['file'] + '.err')
+        del errFileLists[ind]
+    _subMenu('Repair', 'Auto Repair Error', errFileLists, run)
 #}
+
 def _delete(errFileLists): #{
-    print('hello')
+    #  交互命令 - 删除错误文件
+    def run(errFile, ind):
+        msg = 'add' if errFile['op'] == 'A' else 'edit'
+        msg += ' ' + errFile['time'] + ' ' + errFile['file'] + '? '
+        i = input(msg)
+        if i == 'y' or i == 'Y':
+            if os.path.exists(errFile['file']):
+                os.unlink(errFile['file'])
+            if os.path.exists(errFile['file'] + '.err'):
+                os.unlink(errFile['file'] + '.err')
+            del errFileLists[ind]
+    _subMenu('Delete', 'Delete Error File', errFileLists, run)
 #}
 
 def lastSaveErrorChk(runPath): #{
@@ -104,12 +166,9 @@ def lastSaveErrorChk(runPath): #{
     fileLists = os.listdir(runPath)
     errFileLists = []
     for filename in fileLists:
-        errFileMsg = getErrFileMsg(filename)
+        errFileMsg = parseErrFileName(runPath, filename)
         if not errFileMsg:
             continue
-        s = os.stat(runPath + '/' + filename)
-        errFileMsg['time'] = strftime("%Y-%m-%d %H:%M", localtime(s.st_mtime))
-        errFileMsg['runfile'] = runPath + '/' + filename
         errFileLists.append(errFileMsg)
 
     lastSaveErrorPormpt(errFileLists)
