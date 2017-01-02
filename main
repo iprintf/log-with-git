@@ -381,6 +381,7 @@ class App:
 
         if content:
             data = content + data
+
         if kyo.isPipe and interactive:
             if not kyo.isEditor and not data.strip().rstrip('\n'):
                 kyo.quit("错误: 标准输入或管道中没有数据!")

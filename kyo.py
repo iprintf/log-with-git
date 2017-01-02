@@ -90,7 +90,7 @@ def runConfig(config): #{
     if not os.path.exists(runPath):
         os.mkdir(runPath)
 
-    lastSaveErrorChk(runPath)
+    #  lastSaveErrorChk(runPath)
 
     genRunFile()
 #}
@@ -339,10 +339,23 @@ def readMany(dataInfo, args): #{
 #}
 
 def splitSubject(message): #{
-    splitStr = message.find('\n\n') == -1 and '\\n\\n' or '\n\n'
-    msgLines = message.rstrip('\n').split(splitStr)
-    subject  = msgLines.pop(0)
-    data = '\n\n'.join(msgLines)
+    """
+    从数据中分割标题和内容
+    """
+    message = message.decode() if isinstance(message, bytes) else message
+
+    for lf in ['\n\n', '\\n\\n']:
+        ind = message.find(lf)
+        if ind != -1:
+            break
+    if ind == -1:
+        subject = message
+        data = ''
+    else:
+        subject = message[0:ind]
+        ind += len(lf)
+        data = message[ind:].lstrip(lf)
+
     return subject, data
 #}
 

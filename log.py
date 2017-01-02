@@ -334,10 +334,11 @@ class Log:
         oData    = editContent(iData).decode()
         if oData.encode() == iData:
             kyo.quit()
-        msgLines = oData.split('\n\n')
-        subject  = msgLines.pop(0).strip()
-        if not binary:  # accept data from editor only for non-binary
-            data = '\n\n'.join(msgLines)
+
+        subject, data = kyo.splitSubject(oData)
+        #  print('subject: ', subject)
+        #  print('data: ', data, type(data))
+        #  kyo.quit()
 
         # empty subject, abort
         assert subject != '', "aborting due to empty subject"
