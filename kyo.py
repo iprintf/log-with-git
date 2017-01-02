@@ -90,7 +90,7 @@ def runConfig(config): #{
     if not os.path.exists(runPath):
         os.mkdir(runPath)
 
-    #  lastSaveErrorChk(runPath)
+    lastSaveErrorChk(runPath)
 
     genRunFile()
 #}

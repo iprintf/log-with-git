@@ -1,5 +1,12 @@
-import os
+import os, subprocess
 from time import *
+
+def shell_exec(cmd):
+    p = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE,   \
+                         stderr = subprocess.PIPE)
+    output = p.communicate()
+    status = p.wait()
+    return status, output
 
 def parseErrFileName(runPath, filename): #{
     """
@@ -49,11 +56,13 @@ def cs(content, color = '0'): #{
 #}
 
 def _subMenuRun(errFile, ind, run = None): #{
+    filename = os.path.basename(errFile['file'])
+    print(cs('--- ' + filename + ':', '33;1'))
     if run == None:
         if os.path.exists(errFile['file']):
             os.system('less -XRF ' + errFile['file'])
         else:
-            print(cs(errFile['file'] + ' 文件已经不存在啦!', '31;1'))
+            print(cs('--- ' + errFile['file'] + ' 文件已经不存在啦!', '31;1'))
         return
     run(errFile, ind)
 #}
@@ -71,12 +80,19 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
 
     if helpStr.find('\t') == -1:
         helpStr = '\tSelect Error File List \033[32;1mN\033[0m, '+ helpStr +'.'
+
+    di = 1
     while True:
         print("\n--- " + title + " Help ---")
         print(helpStr)
+        print('\tJust Press Enter to Select Default.')
         print('\t\033[34;1mq\033[0m -- Return Main Menu.')
         print('\t\033[34;1ml\033[0m -- Show Error File List.')
-        i = input(cs(title, '34;1') + '>> ')
+        i = input(cs(title, '34;1') + '(' + str(di) + ')>> ')
+
+        if len(i) == 0:
+            i = str(di)
+
         if i == 'q': break
         elif i == 'l':
             lastSaveErrorPormpt(errFileLists)
@@ -84,6 +100,8 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
 
         num = int(i) if i.isdigit() else 0
         if num < 1 or num > errLen: continue
+
+        di = 1 if di >= errLen else num + 1
 
         _subMenuRun(errFileLists[num - 1], num - 1, run)
 #}
@@ -100,7 +118,7 @@ def _error(errFileLists): #{
         if os.path.exists(efile):
             os.system('less -XRF ' + efile)
         else:
-            print(cs('发生了不可预见的错误!', '31;1'))
+            print(cs('--- 发生了不可预见的错误!', '31;1'))
     _subMenu('Error', 'Show Error Message', errFileLists, run)
 #}
 
@@ -113,9 +131,13 @@ def _source(errFileLists): #{
     #  交互命令 - 进入查看编辑原日志菜单(只有编辑错误才有效查看)
     def run(errFile, ind):
         if errFile['op'] == 'A':
-            print(cs('添加失败操作没有原日志内容!', '31;1'))
+            print(cs('--- 添加失败操作没有原日志内容!', '31;1'))
             return
-        os.system('log list ' + errFile['id'])
+        status, output = shell_exec('log list ' + errFile['id'])
+        if status != 0 or len(output[0]) == 0:
+            print(cs('--- 没有对应的日志，建议修复或删除此错误!', '31;1'))
+        else:
+            print(output[0].decode())
     _subMenu('Source', 'Show Source Content', errFileLists, run)
 #}
 
@@ -135,12 +157,13 @@ def _repair(errFileLists): #{
         if errFile['op'] == 'E':
             print(cs('编辑失败操作没有原日志内容!', '31;1'))
             return
-        os.system('log add  < ' + errFile['file'])
-        if os.path.exists(errFile['file']):
-            os.unlink(errFile['file'])
-        if os.path.exists(errFile['file'] + '.err'):
-            os.unlink(errFile['file'] + '.err')
-        del errFileLists[ind]
+        status, output = shell_exec('log add  < ' + errFile['file'])
+        if status == 0 and len(output[0]) == 0 and len(output[1]) == 0:
+            if os.path.exists(errFile['file']):
+                os.unlink(errFile['file'])
+            if os.path.exists(errFile['file'] + '.err'):
+                os.unlink(errFile['file'] + '.err')
+            del errFileLists[ind]
     _subMenu('Repair', 'Auto Repair Error', errFileLists, run)
 #}
 
