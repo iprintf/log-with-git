@@ -104,7 +104,7 @@ def runConfig(config): #{
     if (isPipe and not isEditor) or not (isAdd or isEdit):
         return
 
-    #  lastSaveErrorChk(runPath)
+    lastSaveErrorChk(runPath)
 
     genRunFile()
 #}
@@ -298,6 +298,9 @@ def formater(data): #{
     for row in data:
         stripHead(row)
         lData.append(row)
+
+    if len(lData) == 0:
+        exit(19)
 
     return rGenData(lData)
 #}
