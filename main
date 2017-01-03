@@ -222,7 +222,7 @@ class App:
             x = [E(r) for r in result]
 #if 1    //kyo Comment Start 2016-12-30 15:45
             if len(x) == 0:
-                kyo.quit('错误: 没有匹配到编辑日志!')
+                kyo.quit('错误: 没有匹配到编辑日志!', 1)
 #endif   //kyo Comment End   2016-12-30 15:45
             idx, picked = interact.printAndPick(x, lineMode=True, default=-1)
             if picked:  # user picked one

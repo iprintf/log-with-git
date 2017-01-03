@@ -3,11 +3,11 @@ import sys, os
 from timeutils import isodatetime
 from time import *
 import traceback
-from ifix import lastSaveErrorChk
+from ifix import lastSaveErrorChk, checkEditRun
 import applib
 
 global kconfig, interactive, stdinNo
-global isEdit, isEditor, isPipe, isAdd, isRepair
+global isEdit, isEditor, isPipe, isAdd, isRepair, isQuiet
 global runPath, runFile
 
 interactive = False
@@ -16,6 +16,7 @@ isAdd       = False
 isEditor    = False
 isPipe      = False
 isRepair    = False
+isQuiet     = False
 stdinNo     = False
 runPath     = False
 runFile     = False
@@ -29,9 +30,8 @@ def parseArgs(args): #{
     if ln == 1:
         args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
 
-
     #  如果是编辑日志，修改编辑标识，如果没有参数则默认编辑最后一条日志
-    global isEdit, isRepair
+    global isEdit, isRepair, isQuiet
     if ln >= 2 and args[1] == 'edit':
         isEdit = True
         if ln == 2 or (ln == 3 and '-i' in args):
@@ -46,6 +46,10 @@ def parseArgs(args): #{
                     isRepair = args[ind]
                 del args[ind]
             del args[ind - 1]
+
+        if '-s' in args:
+            isQuiet = True
+            args.remove('-s')
 
     #  如果是添加日志，修改添加标识
     global isAdd
@@ -83,6 +87,9 @@ def genRunFile(ids = None): #{
     """
     global runFile
 
+    if ids != None and checkEditRun(ids[0:6]):
+        quit('正在编辑中...')
+
     runFile = runPath + '/'
     runFile += 'E' if isEdit else 'A'
     randID = applib.genId(kconfig['time'])
@@ -104,7 +111,8 @@ def runConfig(config): #{
     if (isPipe and not isEditor) or not (isAdd or isEdit):
         return
 
-    lastSaveErrorChk(runPath)
+    if not isRepair:
+        lastSaveErrorChk(runPath)
 
     genRunFile()
 #}

@@ -332,6 +332,7 @@ class Log:
                 kyo.kconfig['editor'] += ' "+vert diffsplit ~/.存储失败" '
                 kyo.kconfig['editor'] += ' "+r ' + kyo.isRepair + '" '
                 kyo.kconfig['editor'] += ' "+diffupdate" '
+                kyo.kconfig['editor'] += ' "+set nowrite" '
                 kyo.kconfig['editor'] += ' "+set nomodifiable" '
                 kyo.kconfig['editor'] += ' "+vert sba" '
             else:
@@ -345,10 +346,12 @@ class Log:
 
         if kyo.isRepair and not kyo.isEditor:
             oData    = iData.decode()
-            msg = '\033[31;1m--- 替换操作不可逆，确定此操作吗? (y/N): \033[0m'
-            i = input(msg)
-            if not (i == 'y' or i == 'Y'):
-                kyo.quit()
+            if not kyo.isQuiet:
+                msg = '\033[31;1m--- 替换操作不可逆，'
+                msg += '确定此操作吗? (y/N): \033[0m'
+                i = input(msg)
+                if not (i == 'y' or i == 'Y'):
+                    kyo.quit()
         else:
             oData    = editContent(iData).decode()
             if oData.encode() == iData:
