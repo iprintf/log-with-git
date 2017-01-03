@@ -6,7 +6,8 @@ import traceback
 from ifix import lastSaveErrorChk
 import applib
 
-global kconfig, interactive, isEdit, isEditor, isPipe, stdinNo, isAdd
+global kconfig, interactive, stdinNo
+global isEdit, isEditor, isPipe, isAdd, isRepair
 global runPath, runFile
 
 interactive = False
@@ -14,6 +15,7 @@ isEdit      = False
 isAdd       = False
 isEditor    = False
 isPipe      = False
+isRepair    = False
 stdinNo     = False
 runPath     = False
 runFile     = False
@@ -27,11 +29,23 @@ def parseArgs(args): #{
     if ln == 1:
         args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
 
+
     #  如果是编辑日志，修改编辑标识，如果没有参数则默认编辑最后一条日志
-    global isEdit
+    global isEdit, isRepair
     if ln >= 2 and args[1] == 'edit':
         isEdit = True
-        ln == 2 and args.append('-1')
+        if ln == 2 or (ln == 3 and '-i' in args):
+            args.append('-1')
+        #  如果编辑时加-r选项代表是修复编辑
+        #  -r选项后必须跟临时文件路径，否则选项无用
+        if '-r' in args:
+            ind = args.index('-r')
+            ind += 1
+            if ln > ind:
+                if os.path.exists(args[ind]):
+                    isRepair = args[ind]
+                del args[ind]
+            del args[ind - 1]
 
     #  如果是添加日志，修改添加标识
     global isAdd
@@ -82,15 +96,15 @@ def runConfig(config): #{
     """
     运行配置，添加或编辑状态记录
     """
-    if (isPipe and not isEditor) or not (isAdd or isEdit):
-        return
-
     global runPath
     runPath = config['dataDir'] + '/run'
     if not os.path.exists(runPath):
         os.mkdir(runPath)
 
-    lastSaveErrorChk(runPath)
+    if (isPipe and not isEditor) or not (isAdd or isEdit):
+        return
+
+    #  lastSaveErrorChk(runPath)
 
     genRunFile()
 #}
