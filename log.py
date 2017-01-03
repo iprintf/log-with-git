@@ -326,16 +326,30 @@ class Log:
         binary   = args.pop('binary')
 
 #if 1    //kyo Comment Start 2016-12-30 11:23
+        if kyo.isRepair:
+            if kyo.isEditor and kyo.kconfig['editor'][0:4] == 'vim ':
+                #  kyo.kconfig['editor'] += ' -d ' + kyo.isRepair + ' '
+                kyo.kconfig['editor'] += ' "+vert diffsplit ~/.存储失败" '
+                kyo.kconfig['editor'] += ' "+r ' + kyo.isRepair + '" '
+                kyo.kconfig['editor'] += ' "+diffupdate" '
+                kyo.kconfig['editor'] += ' "+set nomodifiable" '
+                kyo.kconfig['editor'] += ' "+vert sba" '
+            else:
+                fileContent = open(kyo.isRepair, 'rb').read()
+                subject, data = kyo.splitSubject(fileContent)
+
         if kyo.isEdit:
             iData = kyo.editHeadInfo(subject, data, args)
         else:
             iData = kyo.addHeadInfo(subject, data, args)
 
-        oData    = editContent(iData).decode()
-        if oData.encode() == iData:
-            kyo.quit()
-
-        subject, data = kyo.splitSubject(oData)
+        if kyo.isRepair and not kyo.isEditor:
+            oData    = iData.decode()
+        else:
+            oData    = editContent(iData).decode()
+            if oData.encode() == iData:
+                kyo.quit()
+            subject, data = kyo.splitSubject(oData)
         #  print('subject: ', subject)
         #  print('data: ', data, type(data))
         #  kyo.quit()
