@@ -11,7 +11,7 @@ def editContent(content=None):
         tmpfile.write(content)
         tmpfile.flush()
     if kyo.isPipe and kyo.isEditor  \
-            and kyo.kconfig['editor'].find('vim ') != -1:
+            and kyo.kconfig['editor'][0:4] == 'vim ':
         cmd = 'vim - "+r' + tmpfile.name + '" "+w!' + tmpfile.name + '"'
         cmd += ' ' + kyo.kconfig['vimopt']
     else:
