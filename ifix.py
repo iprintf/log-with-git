@@ -1,22 +1,36 @@
 import os, subprocess
 from time import *
 
-def shell_exec(cmd):
-    p = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE,   \
-                         stderr = subprocess.PIPE)
-    output = p.communicate()
-    status = p.wait()
-    return status, output
+def shell_exec(cmd, out = True):
+    out = None if out else subprocess.PIPE
+    p = subprocess.Popen(cmd, shell = True, stdout = out)
+    p.wait()
+    if p.returncode != 0:
+        return False
+    if out != None:
+        so = p.stdout.read()
+        if len(so) != 0:
+            return so
+    return True
+
+def checkEditRun(ids):
+    cmd = 'ps -e --format cmd | grep "vim.*' + ids + '" | grep -v grep'
+    out = shell_exec(cmd, False)
+    #  print(out, type(out), isinstance(out, bool))
+    if not isinstance(out, bool) or out == True:
+        return True
+    return False
 
 def parseErrFileName(runPath, filename): #{
     """
     判断是否为运行文件并且解析文件名提取信息
     """
+
     if filename.find('.') != -1 or len(filename) != 12:
         return False
 
     op = filename[0:1]
-    if not (op == 'E' or op == 'A'):
+    if not (op == 'E' or op == 'A') or checkEditRun(filename):
         return False
 
     res = {}
@@ -60,7 +74,9 @@ def _subMenuRun(errFile, ind, run = None): #{
     print(cs('--- ' + filename + ':', '33;1'))
     if run == None:
         if os.path.exists(errFile['file']):
-            os.system('less -XRF ' + errFile['file'])
+            out = shell_exec('less -XRF ' + errFile['file'])
+            if out == False:
+                print(cs('--- 临时文件无法查看!', '31;1'))
         else:
             print(cs('--- ' + errFile['file'] + ' 文件已经不存在啦!', '31;1'))
         return
@@ -75,7 +91,7 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
     """
     errLen = len(errFileLists)
     if errLen == 1:
-        _subMenuRun(errFileLists.pop(0), 0, run)
+        _subMenuRun(errFileLists[0], 0, run)
         return
 
     if helpStr.find('\t') == -1:
@@ -116,7 +132,9 @@ def _error(errFileLists): #{
     def run(errFile, ind):
         efile = errFile['file'] + '.err'
         if os.path.exists(efile):
-            os.system('less -XRF ' + efile)
+            out = shell_exec('less -XRF ' + efile)
+            if out == False:
+                print(cs('--- 错误文件有问题，无法查看!', '31;1'))
         else:
             print(cs('--- 发生了不可预见的错误!', '31;1'))
     _subMenu('Error', 'Show Error Message', errFileLists, run)
@@ -133,37 +151,51 @@ def _source(errFileLists): #{
         if errFile['op'] == 'A':
             print(cs('--- 添加失败操作没有原日志内容!', '31;1'))
             return
-        status, output = shell_exec('log list ' + errFile['id'])
-        if status != 0 or len(output[0]) == 0:
+        out = shell_exec('log list ' + errFile['id'])
+        if out == False:
             print(cs('--- 没有对应的日志，建议修复或删除此错误!', '31;1'))
-        else:
-            print(output[0].decode())
+
     _subMenu('Source', 'Show Source Content', errFileLists, run)
+#}
+
+def _delErrFile(ind, errFileLists): #{
+    errFile = errFileLists[ind]
+    if os.path.exists(errFile['file']):
+        os.unlink(errFile['file'])
+    if os.path.exists(errFile['file'] + '.err'):
+        os.unlink(errFile['file'] + '.err')
+    del errFileLists[ind]
 #}
 
 def _open(errFileLists): #{
     #  交互命令 - 打开
     def run(errFile, ind):
+        cmd = ''
         if errFile['op'] == 'A':
-            print(cs('添加失败操作没有原日志内容!', '31;1'))
-            return
-        os.system('log list ' + errFile['id'])
-    _subMenu('Source', 'Show Source Content', errFileLists, run)
+            cmd = 'log add -e < ' + errFile['file']
+        elif errFile['op'] == 'E':
+            cmd = 'log edit ' + errFile['id'] + ' -e -r ' + errFile['file']
+        out = shell_exec(cmd)
+        if out == True:
+            _delErrFile(ind, errFileLists)
+    _subMenu('Open', 'Open File Diff Edit', errFileLists, run)
 #}
 
 def _repair(errFileLists): #{
     #  交互命令 - 自动修复
     def run(errFile, ind):
-        if errFile['op'] == 'E':
-            print(cs('编辑失败操作没有原日志内容!', '31;1'))
-            return
-        status, output = shell_exec('log add  < ' + errFile['file'])
-        if status == 0 and len(output[0]) == 0 and len(output[1]) == 0:
-            if os.path.exists(errFile['file']):
-                os.unlink(errFile['file'])
-            if os.path.exists(errFile['file'] + '.err'):
-                os.unlink(errFile['file'] + '.err')
-            del errFileLists[ind]
+        cmd = ''
+        if errFile['op'] == 'A':
+            cmd = 'log add < ' + errFile['file']
+        elif errFile['op'] == 'E':
+            cmd = 'log edit ' + errFile['id'] + ' -s -r ' + errFile['file']
+        out = shell_exec(cmd)
+        if out == True:
+            _delErrFile(ind, errFileLists)
+            print(cs('\t--- 提示: 自动修复成功! ---\n', '32;1'))
+            lastSaveErrorPormpt(errFileLists)
+        else:
+            print(cs('\t--- 自动修复失败! ---\n', '31;1'))
     _subMenu('Repair', 'Auto Repair Error', errFileLists, run)
 #}
 
@@ -174,11 +206,9 @@ def _delete(errFileLists): #{
         msg += ' ' + errFile['time'] + ' ' + errFile['file'] + '? '
         i = input(msg)
         if i == 'y' or i == 'Y':
-            if os.path.exists(errFile['file']):
-                os.unlink(errFile['file'])
-            if os.path.exists(errFile['file'] + '.err'):
-                os.unlink(errFile['file'] + '.err')
-            del errFileLists[ind]
+            _delErrFile(ind, errFileLists)
+            print(cs('\t--- 提示: 错误删除成功! ---\n', '32;1'))
+            lastSaveErrorPormpt(errFileLists)
     _subMenu('Delete', 'Delete Error File', errFileLists, run)
 #}
 
@@ -193,6 +223,9 @@ def lastSaveErrorChk(runPath): #{
         if not errFileMsg:
             continue
         errFileLists.append(errFileMsg)
+
+    if len(errFileLists) == 0:
+        return
 
     lastSaveErrorPormpt(errFileLists)
 
@@ -225,5 +258,6 @@ def lastSaveErrorChk(runPath): #{
             cmdDict[i](errFileLists)
         else:
             print(cs('Huh (' + i + ')?', '31;1'))
-    len(errFileLists) != 0 and exit(0)
+    #  len(errFileLists) != 0 and exit(0)
+    exit(0)
 #}
