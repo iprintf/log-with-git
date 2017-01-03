@@ -345,6 +345,10 @@ class Log:
 
         if kyo.isRepair and not kyo.isEditor:
             oData    = iData.decode()
+            msg = '\033[31;1m--- 替换操作不可逆，确定此操作吗? (y/N): \033[0m'
+            i = input(msg)
+            if not (i == 'y' or i == 'Y'):
+                kyo.quit()
         else:
             oData    = editContent(iData).decode()
             if oData.encode() == iData:
