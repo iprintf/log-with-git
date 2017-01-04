@@ -1,0 +1,35 @@
+# vim: filetype=python:
+#
+# These code is Python code.
+# Only variable assignment will be retained
+
+# Where to store the log data
+dataDir = '/home/kyo/.KATEOI99E_log_data'
+
+# Author name
+authorName = 'Long Zhu'
+
+# Author email
+authorEmail = 'iprintf@qq.com'
+
+#  默认字段信息定界符
+infoDelim = '# Log Info {\n%s\n# Log Info }'
+
+#  默认地点
+defaultScene = 'ShenZhen'
+
+#  默认人物字段
+defaultPeople = 'kyo'
+
+#  默认Tag
+defaultTag = 'undefined'
+
+#  默认列表显示内容行数
+listCL = 10
+
+#  默认编辑嚣
+editor = 'vim'
+
+#  vim编辑嚣的打开选项
+vimOpt = '"+set ff=unix" "+set foldlevel=0"'
+
