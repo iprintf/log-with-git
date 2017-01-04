@@ -11,16 +11,8 @@ global kconfig, interactive, stdinNo
 global isEdit, isEditor, isPipe, isAdd, isRepair, isQuiet
 global runPath, runFile
 
-interactive = False
-isEdit      = False
-isAdd       = False
-isEditor    = False
-isPipe      = False
-isRepair    = False
-isQuiet     = False
-stdinNo     = False
-runPath     = False
-runFile     = False
+isEdit = isAdd = isEditor = isPipe = isRepair = isQuiet = False
+interactive = stdinNo = runPath = runFile = False
 
 def parseArgs(args): #{
     """
@@ -385,7 +377,7 @@ def splitSubject(message): #{
     return subject, data
 #}
 
-def quit(errMsg = False, errCode = 0): #{
+def quit(errMsg = False, errCode = 0, exitCode = None): #{
     """
     程序退出函数，可以退出前打印信息和指定程序错误码
     如果不正常退出则保存锁文件等待下一次处理
@@ -405,5 +397,7 @@ def quit(errMsg = False, errCode = 0): #{
             traceback.print_exc(file = open(runFile + '.err', 'w+'))
             print('存储失败, 数据存储于临时文件: ', runFile, file = sys.stderr)
 
+    if exitCode:
+        exit(exitCode)
     exit(errCode)
 #}
