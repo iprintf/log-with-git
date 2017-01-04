@@ -5,7 +5,7 @@ from xmlstorage  import XmlStorage
 from sqlitestorage import SqliteStorage
 import applib
 from timeutils import isodatetime
-from common import editContent
+from common import editContent, isVim
 import interact
 import kyo
 
@@ -327,14 +327,10 @@ class Log:
 
 #if 1    //kyo Comment Start 2016-12-30 11:23
         if kyo.isRepair:
-            if kyo.isEditor and kyo.kconfig['editor'][0:4] == 'vim ':
-                #  kyo.kconfig['editor'] += ' -d ' + kyo.isRepair + ' '
-                kyo.kconfig['editor'] += ' "+vert diffsplit ~/.存储失败" '
-                kyo.kconfig['editor'] += ' "+r ' + kyo.isRepair + '" '
-                kyo.kconfig['editor'] += ' "+diffupdate" '
-                kyo.kconfig['editor'] += ' "+set nowrite" '
-                kyo.kconfig['editor'] += ' "+set nomodifiable" '
-                kyo.kconfig['editor'] += ' "+vert sba" '
+            if kyo.isEditor and isVim():
+                opt = ' "+source ' + kyo.runPath + '/repair.vim" '
+                opt += ' "+call KyoLogRepairOpenSet(\''+kyo.isRepair+'\')" '
+                kyo.kconfig['editor'] += opt
             else:
                 fileContent = open(kyo.isRepair, 'rb').read()
                 subject, data = kyo.splitSubject(fileContent)
@@ -355,7 +351,7 @@ class Log:
         else:
             oData    = editContent(iData).decode()
             if oData.encode() == iData:
-                kyo.quit()
+                kyo.quit(exitCode = 1)
             subject, data = kyo.splitSubject(oData)
         #  print('subject: ', subject)
         #  print('data: ', data, type(data))
