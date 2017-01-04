@@ -1,31 +1,11 @@
-import os, subprocess
+import os
 from time import *
-
-def shell_exec(cmd, out = True):
-    out = None if out else subprocess.PIPE
-    p = subprocess.Popen(cmd, shell = True, stdout = out)
-    p.wait()
-    if p.returncode != 0:
-        return False
-    if out != None:
-        so = p.stdout.read()
-        if len(so) != 0:
-            return so
-    return True
-
-def checkEditRun(ids):
-    cmd = 'ps -e --format cmd | grep "vim.*' + ids + '" | grep -v grep'
-    out = shell_exec(cmd, False)
-    #  print(out, type(out), isinstance(out, bool))
-    if not isinstance(out, bool) or out == True:
-        return True
-    return False
+from common import checkEditRun, cs, shell_exec
 
 def parseErrFileName(runPath, filename): #{
     """
     判断是否为运行文件并且解析文件名提取信息
     """
-
     if filename.find('.') != -1 or len(filename) != 12:
         return False
 
@@ -42,9 +22,9 @@ def parseErrFileName(runPath, filename): #{
     return res
 #}
 
-def lastSaveErrorPormpt(errFileLists): #{
+def listPrompt(errFileLists): #{
     """
-    上次存储失败提示信息
+    上次存储失败文件列表显示及命令提示信息
     """
     msg = '你有 \033[31m'
     msg += str(len(errFileLists))
@@ -64,11 +44,6 @@ def lastSaveErrorPormpt(errFileLists): #{
         n = n + 1
 #}
 
-def cs(content, color = '0'): #{
-    #  组合带颜色的字符串
-    return '\033[' + color + 'm' + str(content) + '\033[0m'
-#}
-
 def _subMenuRun(errFile, ind, run = None): #{
     filename = os.path.basename(errFile['file'])
     print(cs('--- ' + filename + ':', '33;1'))
@@ -83,14 +58,15 @@ def _subMenuRun(errFile, ind, run = None): #{
     run(errFile, ind)
 #}
 
-
 def _subMenu(title, helpStr, errFileLists, run = None): #{
     """
     子菜单 选择错误列表文件进行操作
     支持最终操作回调
     """
     errLen = len(errFileLists)
-    if errLen == 1:
+    if errLen == 0:
+        return
+    elif errLen == 1:
         _subMenuRun(errFileLists[0], 0, run)
         return
 
@@ -98,7 +74,7 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
         helpStr = '\tSelect Error File List \033[32;1mN\033[0m, '+ helpStr +'.'
 
     di = 1
-    while True:
+    while len(errFileLists) != 0:
         print("\n--- " + title + " Help ---")
         print(helpStr)
         print('\tJust Press Enter to Select Default.')
@@ -111,7 +87,7 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
 
         if i == 'q': break
         elif i == 'l':
-            lastSaveErrorPormpt(errFileLists)
+            listPrompt(errFileLists)
             continue
 
         num = int(i) if i.isdigit() else 0
@@ -120,11 +96,6 @@ def _subMenu(title, helpStr, errFileLists, run = None): #{
         di = 1 if di >= errLen else num + 1
 
         _subMenuRun(errFileLists[num - 1], num - 1, run)
-#}
-
-def _list(errFileLists): #{
-    #  交互命令 - 列出错误文件
-    lastSaveErrorPormpt(errFileLists)
 #}
 
 def _error(errFileLists): #{
@@ -159,6 +130,9 @@ def _source(errFileLists): #{
 #}
 
 def _delErrFile(ind, errFileLists): #{
+    """
+    删除错误相关文件及错误列表元素
+    """
     errFile = errFileLists[ind]
     if os.path.exists(errFile['file']):
         os.unlink(errFile['file'])
@@ -193,7 +167,6 @@ def _repair(errFileLists): #{
         if out == True:
             _delErrFile(ind, errFileLists)
             print(cs('\t--- 提示: 自动修复成功! ---\n', '32;1'))
-            lastSaveErrorPormpt(errFileLists)
         else:
             print(cs('\t--- 自动修复失败! ---\n', '31;1'))
     _subMenu('Repair', 'Auto Repair Error', errFileLists, run)
@@ -208,7 +181,6 @@ def _delete(errFileLists): #{
         if i == 'y' or i == 'Y':
             _delErrFile(ind, errFileLists)
             print(cs('\t--- 提示: 错误删除成功! ---\n', '32;1'))
-            lastSaveErrorPormpt(errFileLists)
     _subMenu('Delete', 'Delete Error File', errFileLists, run)
 #}
 
@@ -224,13 +196,25 @@ def lastSaveErrorChk(runPath): #{
             continue
         errFileLists.append(errFileMsg)
 
-    if len(errFileLists) == 0:
+    errLen = len(errFileLists)
+    if errLen == 0:
         return
+    elif errLen == 1:
+        errFile = errFileLists[0]
+        if errFile['op'] == 'E':
+            msg = '--- 日志ID为' + cs(errFile['id'], '33;1') + '编辑'
+        else:
+            msg = '--- 上一次添加日志'
+        msg += '失败，是否尝试自动修复? (y/N): '
+        i = input(msg)
+        if i == 'y' or i == 'Y':
+            _repair(errFileLists)
+            return
 
-    lastSaveErrorPormpt(errFileLists)
+    listPrompt(errFileLists)
 
     cmdDict = {
-                'list': _list, 'l': _list, '1': _list,
+                'list': listPrompt, 'l': listPrompt, '1': listPrompt,
                 'error': _error, 'e': _error, '2': _error,
                 'tmpfile': _tmpfile, 't': _tmpfile, '3': _tmpfile,
                 'source': _source, 's': _source, '4': _source,
@@ -239,7 +223,7 @@ def lastSaveErrorChk(runPath): #{
                 'delete': _delete, 'd': _delete, '7': _delete,
               }
 
-    while True:
+    while len(errFileLists) != 0:
         msg = '\n*** Commands ***\n'
         msg += '    1: \033[34;1ml\033[0mist'
         msg += '    2: \033[34;1me\033[0mrror '
@@ -258,6 +242,7 @@ def lastSaveErrorChk(runPath): #{
             cmdDict[i](errFileLists)
         else:
             print(cs('Huh (' + i + ')?', '31;1'))
+
     #  len(errFileLists) != 0 and exit(0)
     exit(0)
 #}
