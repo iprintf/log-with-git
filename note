@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# Author:   Joshua Chen <iesugrace@gmail.com>
+# Date:     2016-12-11 15:19:54
+# Location: Shenzhen
+# Desc: Use 'log-with-git' to store casual documents.
+#
+
+save_stdin() {
+    local title
+    title="Document at $(date '+%F %T')"
+    cat | $recorder add -m "$title"
+}
+
+
+save_file() {
+    local path=$1 title
+    title="Document from file: $path"
+    $recorder add -m "$title" < "$path"
+}
+
+
+help() {
+    bname=$(basename $0)
+    cat <<EOF
+Usage: $bname [FILE]...
+
+Examples:
+$bname file1 file2 -
+pipe | $bname
+EOF
+}
+
+recorder="log -F $HOME/.doccolrc"
+
+if test "$1" = '--help' -o "$1" = '-h'; then
+    help
+    exit 0
+fi
+
+if test "$#" = 0; then
+    save_stdin
+    exit
+fi
+
+for arg in "$@"
+do
+    if test "$arg" = '-'; then
+        save_stdin
+    else
+        save_file "$arg"
+    fi
+done
