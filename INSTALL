@@ -6,13 +6,13 @@
     #
     # These code is Python code.
     # Only variable assignment will be retained
-    
+
     # Where to store the log data
     dataDir = '/home/joshua/.soogho9E_log_data'
-    
+
     # Author name
     authorName = 'Joshua Chen'
-    
+
     # Author email
     authorEmail = 'iesugrace@gmail.com'
 
