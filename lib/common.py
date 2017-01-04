@@ -1,6 +1,13 @@
 import os, subprocess
 import kyo
 
+def isVim(): #{
+    """
+    判断是否为vim编辑嚣
+    """
+    return True if kyo.kconfig['editor'][0:4] == 'vim ' else False
+#}
+
 def checkEditRun(ids): #{
     """
     检测文档是否正在编辑
@@ -48,8 +55,7 @@ def editContent(content=None):
         tmpfile.write(content)
         tmpfile.flush()
 
-    isVim = True if kyo.kconfig['editor'][0:4] == 'vim ' else False
-    if kyo.isPipe and kyo.isEditor and isVim:
+    if kyo.isPipe and kyo.isEditor and isVim():
         cmd = 'vim - "+r' + tmpfile.name + '" "+w!' + tmpfile.name + '"'
         cmd += ' ' + kyo.kconfig['vimopt']
     else:
