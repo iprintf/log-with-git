@@ -3,7 +3,8 @@ import sys, os
 from timeutils import isodatetime
 from time import *
 import traceback
-from ifix import lastSaveErrorChk, checkEditRun
+from ifix import lastSaveErrorChk
+from common import checkEditRun
 import applib
 
 global kconfig, interactive, stdinNo
@@ -111,7 +112,7 @@ def runConfig(config): #{
     if (isPipe and not isEditor) or not (isAdd or isEdit):
         return
 
-    if not isRepair:
+    if not (isPipe and isEditor) and not isRepair:
         lastSaveErrorChk(runPath)
 
     genRunFile()
