@@ -184,8 +184,8 @@ class XmlStorage:
         deletedBNames = []
         for path in paths:
             record = XmlStorage.load(None, path)
-            if not preAction(record):
-                continue
+            #  if not preAction(record):
+                #  continue
             XmlStorage.__delete(None, path)
             postAction(record)
             deletedPaths.append(path)
