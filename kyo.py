@@ -98,7 +98,7 @@ def runConfig(config): #{
     """
     global runPath
     runPath = config['dataDir'] + '/run'
-    if not os.path.exists(runPath):
+    if os.path.exists(config['dataDir']) and not os.path.exists(runPath):
         os.mkdir(runPath)
 
     if (isPipe and not isEditor) or not (isAdd or isEdit):

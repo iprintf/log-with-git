@@ -298,9 +298,13 @@ class App:
 
         assert len(args) == 1, "wrong arguments"
         remote  = args[0]
-        dataDir = self.configs['dataDir']
+        dataDir = self.configs['dataDir'] + '/xml'
+        if os.path.exists(dataDir):
+            os.system('rm -rf ' + dataDir)
         stat    = os.system('git shadow-clone %s %s' % (remote, dataDir))
-        exit(0 if stat else 1)
+        if not stat:
+            stat = os.system('log || log man unity')
+        exit(stat)
 
 
     """ Methods defined below are Record definition specific,
