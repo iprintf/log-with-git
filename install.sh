@@ -57,6 +57,8 @@ EOF
 }
 
 do_install() {
+    test -e "$rcfile" && myexit "$rcfile, 指定的配置文件已经存在!"
+    test -d "$datadir" && myexit "$datadir, 指定的数据目录已经存在!"
     creat_dir
     creat_conf
     /bin/cp repair.vim "$datadir/run/"
@@ -64,8 +66,8 @@ do_install() {
     log -F $rcfile
 }
 
-datadir=${1-$(getname)}
-rcfile=${2-~/.logrc}
+rcfile=${1-~/.logrc}
+datadir=${2-$(getname)}
 # datadir=$(getname "/tmp")
 # rcfile='/tmp/logrc'
 
