@@ -287,7 +287,8 @@ def rGenData(data): #{
     """
     limitLine = False if len(data) == 1 else True
     for row in data:
-        stripEmptyLine(row, limitLine)
+        if limitLine:
+            stripEmptyLine(row, limitLine)
         yield row
 #}
 
