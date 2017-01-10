@@ -6,7 +6,7 @@ myexit() {
 }
 
 getname() {
-    dir=${1-"~/"}
+    dir=${1-~}
     name="$(echo $(date +%s)$[1999 + RANDOM % 8000] | sha1sum | base64)"
     name="$dir/.kyo_log_${name:5:10}"
     echo $name
@@ -64,8 +64,8 @@ do_install() {
     log -F $rcfile
 }
 
-datadir="${1-$(getname)}"
-rcfile="${2-~/.logrc}"
+datadir=${1-$(getname)}
+rcfile=${2-~/.logrc}
 # datadir=$(getname "/tmp")
 # rcfile='/tmp/logrc'
 
