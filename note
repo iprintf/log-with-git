@@ -1,53 +1,50 @@
 #!/bin/bash
 #
-# Author:   Joshua Chen <iesugrace@gmail.com>
-# Date:     2016-12-11 15:19:54
+# Author:   kyo <iprintf@qq.com>
+# Date:     2017-01-10 16:54:54
 # Location: Shenzhen
-# Desc: Use 'log-with-git' to store casual documents.
+# Desc: Use 'log-with-git' to encrypt store.
 #
 
-save_stdin() {
-    local title
-    title="Document at $(date '+%F %T')"
-    cat | $recorder add -m "$title"
+myexit() {
+    echo $1
+    exit $2
+}
+
+vim_last_cmd() {
+    local viminfo=~/.viminfo
+    test ! -e $viminfo && echo None
+    grep -m1 '^:' $viminfo 2> /dev/null
+}
+
+log_add() {
+    # 临时文件必须不存在，否则视为上次编辑出错
+    # 编辑结束, vim最后一条命令为q!、文件不存在或为空代表不保存此文档
+    test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
+    vim $tmpfile
+    test ! -e "$tmpfile" && return 0
+    filesize=$(wc -c "$tmpfile" | awk '{print $1}')
+    test "$filesize" -eq 0 && return 1
+    test "$(vim_last_cmd)" == ":q!" && return 1
+    title=$(sed -n "1p" $tmpfile)
+    cat $tmpfile | $gpg -ae | $recorder add -e -m "$title"
+    return 1
 }
 
 
-save_file() {
+log_edit() {
     local path=$1 title
     title="Document from file: $path"
     $recorder add -m "$title" < "$path"
 }
 
-
-help() {
-    bname=$(basename $0)
-    cat <<EOF
-Usage: $bname [FILE]...
-
-Examples:
-$bname file1 file2 -
-pipe | $bname
-EOF
+log_list() {
+    echo "list"
 }
 
-recorder="log -F $HOME/.doccolrc"
 
-if test "$1" = '--help' -o "$1" = '-h'; then
-    help
-    exit 0
-fi
+tmpfile='/tmp/kyo_log_file'
+recorder="log -F $HOME/.logtest"
+gpg="gpg -r iprintf@qq.com"
 
-if test "$#" = 0; then
-    save_stdin
-    exit
-fi
-
-for arg in "$@"
-do
-    if test "$arg" = '-'; then
-        save_stdin
-    else
-        save_file "$arg"
-    fi
-done
+log_${1-list} || rm $tmpfile -f
