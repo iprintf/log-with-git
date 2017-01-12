@@ -21,30 +21,98 @@ log_add() {
     # 临时文件必须不存在，否则视为上次编辑出错
     # 编辑结束, vim最后一条命令为q!、文件不存在或为空代表不保存此文档
     test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
-    vim $tmpfile
+
+    vim "+set ff=unix" "+set foldlevel=0" $tmpfile
+
     test ! -e "$tmpfile" && return 0
     filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
-    title=$(sed -n "1p" $tmpfile)
-    cat $tmpfile | $gpg -ae | $recorder add -e -m "$title"
+
+    test "x$1" == "x-m" && opt="-m $(date +%F)"     \
+                        || opt="-e -m $(sed -n "1p" $tmpfile)"
+    cat $tmpfile | $gpg -ae | $log add $opt
+
     return 1
 }
 
 
+parse_header() {
+    local id=$1
+    test -z "$id" && myexit "没有指定ID!"
+
+    subject=$($log list $id -f '%s')
+    test -z "$subject" && myexit "没有匹配到指定日志!"
+
+    time=$($log list $id -f '%t')
+    test -z "$time" && myexit "指定日志格式有误!"
+    time="#    time   = $time"
+
+    scene=$($log list $id -f '%c')
+    people=$($log list $id -f '%p')
+    tag=$($log list $id -f '%g')
+
+    echo "$subject"
+    echo
+    echo '# Log Info {'
+    echo "$time"
+    test ! -z "$scene" && echo "#    scene  = $scene"
+    test ! -z "$people" && echo "#    people = $people"
+    test ! -z "$tag" && echo "#    tag    = $tag"
+    echo '# Log Info }'
+}
+
 log_edit() {
-    local path=$1 title
-    title="Document from file: $path"
-    $recorder add -m "$title" < "$path"
-}
+    # 临时文件必须不存在，否则视为上次编辑出错
+    # 分别取出编辑指定日志的字段进行组合到临时文件中(数据本身解密)
+    # 启动编辑器进行编辑，编辑完成退出后取出数据字段进行加密
+    # 再通过log edit ID -s -r file来更新日志程序
+    test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
+    local id=${1--1}
 
-log_list() {
-    echo "list"
-}
+    header=$(parse_header $id)
+    data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
+    test $? -ne 0 && myexit "此日志不是加密日志!"
 
+    cat > "$tmpfile" << EOF
+$header
+
+$data
+EOF
+    vim "+set ff=unix" "+set foldlevel=0" $tmpfile
+
+    filesize=$(wc -c "$tmpfile" | awk '{print $1}')
+    test "$filesize" -eq 0 && return 1
+    test "$(vim_last_cmd)" == ":q!" && return 1
+
+    subject=$(sed '/# \?log \?Info \?}/I,$d' "$tmpfile")
+    data=$(sed '1,2d' "$tmpfile"                                    \
+            | sed '/# \?Log \?Info \?{/I,/# \?Log \?Info \?}/Id'    \
+            | sed '/./,$!d' | $gpg -ae)
+    cat > "$tmpfile" << EOF
+$subject
+# Log Info }
+
+$data
+EOF
+    $log edit $id -s -r "$tmpfile"
+
+    return 1
+}
 
 tmpfile='/tmp/kyo_log_file'
-recorder="log -F $HOME/.logtest"
+log="log -F $HOME/.logtest"
 gpg="gpg -r iprintf@qq.com"
 
-log_${1-list} || rm $tmpfile -f
+cmd=${1-list}
+
+if test $cmd == "add" ;then
+    shift
+    log_add $1 || rm $tmpfile -f
+elif test $cmd == "edit" ;then
+    shift
+    log_edit $1 || rm $tmpfile -f
+else
+    $log $@
+fi
+
