@@ -62,7 +62,8 @@ do_install() {
     creat_dir
     creat_conf
     /bin/cp repair.vim "$datadir/run/"
-    test -e /usr/local/bin/log || ln -s "$(pwd)/main" /usr/local/bin/log
+    test -e /usr/local/bin/note || ln -s "$(pwd)/main" /usr/local/bin/note
+    test -e /usr/local/bin/kdy || ln -s "$(pwd)/note" /usr/local/bin/kdy
     log -F $rcfile
 }
 

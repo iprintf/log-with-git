@@ -101,7 +101,7 @@ EOF
 }
 
 tmpfile='/tmp/kyo_log_file'
-log="log -F $HOME/.logtest"
+log="note -F $HOME/.logenrc"
 gpg="gpg -r iprintf@qq.com"
 
 cmd=${1-list}
