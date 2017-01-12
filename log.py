@@ -5,7 +5,7 @@ from xmlstorage  import XmlStorage
 from sqlitestorage import SqliteStorage
 import applib
 from timeutils import isodatetime
-from common import editContent, isVim
+from common import editContent, isVim, vimLastCmd
 import interact
 import kyo
 
@@ -350,8 +350,10 @@ class Log:
                     kyo.quit()
         else:
             oData    = editContent(iData).decode()
-            if oData.encode() == iData:
-                kyo.quit(exitCode = 1)
+            vimSave = vimLastCmd().strip('\n') in [':wq', ':wq!', ':wqall']
+            if not (kyo.isPipe and kyo.isEditor and vimSave):
+                if oData.encode() == iData:
+                    kyo.quit(exitCode = 1)
             subject, data = kyo.splitSubject(oData)
         #  print('subject: ', subject)
         #  print('data: ', data, type(data))
