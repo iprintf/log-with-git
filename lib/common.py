@@ -46,6 +46,21 @@ def shell_exec(cmd, out = True): #{
     return True
 #}
 
+def vimLastCmd(): #{
+    """
+    获取vim最后一条命令
+    """
+    if not isVim():
+        return ""
+
+    viminfo=os.environ['HOME'] + '/.viminfo'
+    if os.path.exists(viminfo):
+        out = shell_exec("grep -m1 '^:' " + viminfo, False)
+        if isinstance(out, bytes) or isinstance(out, str):
+            return out if isinstance(out, str) else out.decode()
+    return ""
+#}
+
 def editContent(content=None):
     """ Edit the content with vi editor, the input
     'content' is byte, the returned one is byte also
