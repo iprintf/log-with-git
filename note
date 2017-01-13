@@ -106,12 +106,12 @@ gpg="gpg -r iprintf@qq.com"
 
 cmd=${1-list}
 
-if test $cmd == "add" ;then
+if test "$cmd" == "add" -o "$cmd" == "a" ;then
     shift
-    log_add $1 || rm $tmpfile -f
-elif test $cmd == "edit" ;then
+    log_add "$1" || rm "$tmpfile" -f
+elif test "$cmd" == "edit" -o "$cmd" == "e" ;then
     shift
-    log_edit $1 || rm $tmpfile -f
+    log_edit "$1" || rm "$tmpfile" -f
 else
     $log $@
 fi
