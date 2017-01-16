@@ -81,17 +81,26 @@ log_edit() {
     data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
     test $? -ne 0 && myexit "此日志不是加密日志!"
 
-    tmpfile=$(mktemp)
-    cat > "$tmpfile" << EOF
+    oldfile=$(mktemp)
+    cat > "$oldfile" << EOF
 $header
 
 $data
 EOF
-    vim "$vimopt" $tmpfile
+    tmpfile=$(mktemp)
+    cat "$oldfile" > "$tmpfile"
+
+    vim "$vimopt" "$tmpfile"
 
     filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
+
+    if diff "$tmpfile" "$oldfile" &> /dev/null ;then
+        rm $oldfile -f
+        return 1
+    fi
+    rm $oldfile -f
 
     subject=$(sed '/# \?log \?Info \?}/I,$d' "$tmpfile")
     data=$(sed '1,2d' "$tmpfile"                                    \
