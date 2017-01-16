@@ -20,22 +20,27 @@ vim_last_cmd() {
 log_add() {
     # 临时文件必须不存在，否则视为上次编辑出错
     # 编辑结束, vim最后一条命令为q!、文件不存在或为空代表不保存此文档
-    test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
+    # test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
+    tmpfile=$(mktemp)
 
     vim "+set ff=unix" "+set foldlevel=0" $tmpfile
 
-    test ! -e "$tmpfile" && return 0
+    test ! -e "$tmpfile" && return 1
     filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
 
-    test "x$1" == "x-m" && opt="-m $(date +%F)"     \
-                        || opt="-e -m $(sed -n "1p" $tmpfile)"
-    cat $tmpfile | $gpg -ae | $log add $opt
+    if test "x$1" == "x-m" ;then
+        local ms="$(date +%F)"
+        local opt=""
+    else
+        local ms="$(sed -n "1p" $tmpfile)"
+        local opt="-e"
+    fi
+    cat $tmpfile | $gpg -ae | $log add $opt -m "$ms"
 
     return 1
 }
-
 
 parse_header() {
     local id=$1
@@ -67,20 +72,22 @@ log_edit() {
     # 分别取出编辑指定日志的字段进行组合到临时文件中(数据本身解密)
     # 启动编辑器进行编辑，编辑完成退出后取出数据字段进行加密
     # 再通过log edit ID -s -r file来更新日志程序
-    test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
+    # test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
     test -z "$1" && id=-1 || id="$1"
+    echo "$1" | egrep '^\-[0-9]+$' &> /dev/null && id=-1
 
     header=$(parse_header $id)
     test $? -ne 0 && myexit $header
     data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
     test $? -ne 0 && myexit "此日志不是加密日志!"
 
+    tmpfile=$(mktemp)
     cat > "$tmpfile" << EOF
 $header
 
 $data
 EOF
-    vim "+set ff=unix" "+set foldlevel=0" $tmpfile
+    vim "$vimopt" $tmpfile
 
     filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
@@ -101,7 +108,6 @@ EOF
     return 1
 }
 
-tmpfile='/tmp/kyo_log_file'
 # log="note -F $HOME/.logenrc"
 gpg="gpg -r iprintf@qq.com"
 
@@ -114,6 +120,11 @@ if test "$cmd" == "add" -o "$cmd" == "a" ;then
     log_add "$1" || rm "$tmpfile" -f
 elif test "$cmd" == "edit" -o "$cmd" == "e" ;then
     shift
+    vimopt="+set ff=unix foldlevel=0 "
+    if test ! -z "$1" -a "$1" == "-l" ;then
+        vimopt+=" nomodifiable buftype=nofile"
+        shift
+    fi
     log_edit "$1" || rm "$tmpfile" -f
 else
     $log $@
