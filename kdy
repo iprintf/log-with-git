@@ -118,7 +118,7 @@ EOF
 }
 
 # log="note -F $HOME/.logenrc"
-gpg="gpg -r iprintf@qq.com"
+gpg="gpg --batch -q -r iprintf@qq.com"
 
 test -z $klogrc && log="note -F $HOME/.logenrc" || log="note -F $klogrc"
 
