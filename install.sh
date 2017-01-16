@@ -63,8 +63,8 @@ do_install() {
     creat_conf
     /bin/cp repair.vim "$datadir/run/"
     test -e /usr/local/bin/note || ln -s "$(pwd)/main" /usr/local/bin/note
-    test -e /usr/local/bin/kdy || ln -s "$(pwd)/note" /usr/local/bin/kdy
-    log -F $rcfile
+    test -e /usr/local/bin/kdy || ln -s "$(pwd)/kdy" /usr/local/bin/kdy
+    note -F $rcfile
 }
 
 rcfile=${1-~/.logrc}

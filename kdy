@@ -8,7 +8,7 @@
 
 myexit() {
     echo $1
-    exit $2
+    exit ${2-1}
 }
 
 vim_last_cmd() {
@@ -68,9 +68,10 @@ log_edit() {
     # 启动编辑器进行编辑，编辑完成退出后取出数据字段进行加密
     # 再通过log edit ID -s -r file来更新日志程序
     test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
-    local id=${1--1}
+    test -z "$1" && id=-1 || id="$1"
 
     header=$(parse_header $id)
+    test $? -ne 0 && myexit $header
     data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
     test $? -ne 0 && myexit "此日志不是加密日志!"
 
@@ -101,8 +102,10 @@ EOF
 }
 
 tmpfile='/tmp/kyo_log_file'
-log="note -F $HOME/.logenrc"
+# log="note -F $HOME/.logenrc"
 gpg="gpg -r iprintf@qq.com"
+
+test -z $klogrc && log="note -F $HOME/.logenrc" || log="note -F $klogrc"
 
 cmd=${1-list}
 
