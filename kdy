@@ -73,6 +73,7 @@ get_defile() {
     header=$(parse_header $id)
     test $? -ne 0 && myexit $header
     data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
+    test $? -ne 0 && myexit "GPG解密失败，请检查!"
 
     #生成临时文件存储要编辑的内容(用于对比编辑后是否修改了内容)
     oldfile=$(mktemp)
@@ -102,6 +103,7 @@ log_edit() {
 
     # 获取解密后数据及文件头的组合临时文件
     oldfile=$(get_defile $id)
+    test ! -f "$oldfile" && myexit $oldfile
 
     # 生成编辑的临时文件，数据来自于$oldfile
     tmpfile=$(mktemp)
