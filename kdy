@@ -67,6 +67,23 @@ parse_header() {
     echo '# Log Info }'
 }
 
+get_defile() {
+    local id=$1
+    # 抽取日志字段解密组合到临时文件中
+    header=$(parse_header $id)
+    test $? -ne 0 && myexit $header
+    data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
+
+    #生成临时文件存储要编辑的内容(用于对比编辑后是否修改了内容)
+    oldfile=$(mktemp)
+    cat > "$oldfile" << EOF
+$header
+
+$data
+EOF
+    echo $oldfile
+}
+
 log_edit() {
     # 临时文件必须不存在，否则视为上次编辑出错
     # 分别取出编辑指定日志的字段进行组合到临时文件中(数据本身解密)
@@ -76,32 +93,36 @@ log_edit() {
     test -z "$1" && id=-1 || id="$1"
     echo "$1" | egrep '^\-[0-9]+$' &> /dev/null && id=-1
 
-    header=$(parse_header $id)
-    test $? -ne 0 && myexit $header
-    data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
-    test $? -ne 0 && myexit "此日志不是加密日志!"
+    # 判断是否为GPG加密日志，如果不是则使用普通edit
+    if ! $log list $id -f "%d" | grep 'BEGIN PGP MESSAGE' &> /dev/null
+    then
+        $log edit $@
+        return
+    fi
 
-    oldfile=$(mktemp)
-    cat > "$oldfile" << EOF
-$header
+    # 获取解密后数据及文件头的组合临时文件
+    oldfile=$(get_defile $id)
 
-$data
-EOF
+    # 生成编辑的临时文件，数据来自于$oldfile
     tmpfile=$(mktemp)
     cat "$oldfile" > "$tmpfile"
 
+    # 启动编辑器开始编辑
     vim "$vimopt" "$tmpfile"
 
+    # 文件内容为空或强制退出的视为不保存此时的编辑
     filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
 
+    # 对比编辑后文件内容是否修改改，如果没有修改则退出
     if diff "$tmpfile" "$oldfile" &> /dev/null ;then
         rm $oldfile -f
         return 1
     fi
     rm $oldfile -f
 
+    # 分别取出字段，对数据进行加密再组合输入到日志系统中
     subject=$(sed '/# \?log \?Info \?}/I,$d' "$tmpfile")
     data=$(sed '1,2d' "$tmpfile"                                    \
             | sed '/# \?Log \?Info \?{/I,/# \?Log \?Info \?}/Id'    \
@@ -117,25 +138,50 @@ EOF
     return 1
 }
 
+log_tag() {
+    if test -z "$1" ; then
+        $log list -f "%g" | sort | uniq
+    else
+        $log list -S "tag/$1/"
+    fi
+}
+
 # log="note -F $HOME/.logenrc"
 gpg="gpg --batch -q -r iprintf@qq.com"
 
-test -z $klogrc && log="note -F $HOME/.logenrc" || log="note -F $klogrc"
+# test -z $klogrc && log="note -F $HOME/.logenrc" || log="note -F $klogrc"
+# test -z $klogrc && log="note -F $HOME/.logtest" || log="note -F $klogrc"
+test -z $klogrc && log="note" || log="note -F $klogrc"
 
 cmd=${1-list}
 
-if test "$cmd" == "add" -o "$cmd" == "a" ;then
-    shift
-    log_add "$1" || rm "$tmpfile" -f
-elif test "$cmd" == "edit" -o "$cmd" == "e" ;then
-    shift
-    vimopt="+set ff=unix foldlevel=0 "
-    if test ! -z "$1" -a "$1" == "-l" ;then
-        vimopt+=" nomodifiable buftype=nofile"
+case "$cmd" in
+    add|a)
         shift
-    fi
-    log_edit "$1" || rm "$tmpfile" -f
-else
-    $log $@
-fi
-
+        $log add $@
+        ;;
+    en)
+        shift
+        log_add "$1" || rm "$tmpfile" -f
+        ;;
+    edit|e)
+        shift
+        vimopt="+set ff=unix foldlevel=0 "
+        if test ! -z "$1" -a "$1" == "-l" ;then
+            vimopt+=" nomodifiable buftype=nofile"
+            shift
+        fi
+        log_edit $@ || rm "$tmpfile" -f
+        ;;
+    tag|t)
+        shift
+        log_tag $@
+        ;;
+    *)
+        if echo $cmd | egrep '^[0-9a-f]+$' &> /dev/null ; then
+            $0 edit $cmd
+        else
+            $log $@
+        fi
+        ;;
+esac
