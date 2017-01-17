@@ -164,6 +164,10 @@ case "$cmd" in
         shift
         log_add "$1" || rm "$tmpfile" -f
         ;;
+    read|r)
+        shift
+        $0 edit -l $@
+        ;;
     edit|e)
         shift
         vimopt="+set ff=unix foldlevel=0 "
