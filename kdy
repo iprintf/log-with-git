@@ -97,7 +97,7 @@ log_edit() {
     # 判断是否为GPG加密日志，如果不是则使用普通edit
     if ! $log list $id -f "%d" | grep 'BEGIN PGP MESSAGE' &> /dev/null
     then
-        $log edit $@
+        $log edit "$@"
         return
     fi
 
@@ -140,11 +140,49 @@ EOF
     return 1
 }
 
+list_choice_edit() {
+    #未完成，选择后与ID的对应关系没有建立起来
+    local list="$1" id
+    test -z "$list" && return 1
+    while true
+    do
+        echo "$list"
+        read -p "choice num> " id
+        if egrep -q '^q(u(it?)?)?$' &> /dev/null <<< "$id" ; then
+            break
+        fi
+    done
+}
+
+list_display() {
+    local list="$1"
+    test -z "$list" && return 1
+    local n=0 id date time title
+    while read line
+    do
+        let n++
+        read id date time title <<< \
+                $(awk -F'[()]' '{print $1,$2,$3,$4}' <<< $line)
+        echo -ne "\033[32m$n.\033[33m$id\033[37m($date $time)"
+        echo -e "\033[0m$title"
+    done <<< "$list"
+}
+
 log_tag() {
     if test -z "$1" ; then
-        $log list -f "%g" | sort | uniq
+        $log list -f '%g' | sort | uniq -c | sort -rn | less
+    elif test "x$1" == "x--all" -o "x$1" == "x-a"; then
+        $log list -f '%g' | sed -r 's/,/\n/g'  \
+               | sort | uniq -c | sort -rn | less
     else
-        $log list -S "tag/$1/"
+        local list=$($log list -S "tag/$1/" -f "%i(%mtk): %s")
+        local line=$(wc -l <<< "$list")
+        if test "x$list" != "x" -a "$line" -eq 1 ; then
+            $0 edit $(awk -F"(" '{print $1}' <<< "$list")
+        else
+            # list_choice_edit "$(list_display "$list")"
+            list_display "$list"
+        fi
     fi
 }
 
@@ -160,7 +198,7 @@ cmd=${1-list}
 case "$cmd" in
     add|a)
         shift
-        $log add $@
+        $log add "$@"
         ;;
     en)
         shift
@@ -168,7 +206,7 @@ case "$cmd" in
         ;;
     read|r)
         shift
-        $0 edit -l $@
+        $0 edit -l "$@"
         ;;
     edit|e)
         shift
@@ -177,17 +215,17 @@ case "$cmd" in
             vimopt+=" nomodifiable buftype=nofile"
             shift
         fi
-        log_edit $@ || rm "$tmpfile" -f
+        log_edit "$@" || rm "$tmpfile" -f
         ;;
     tag|t)
         shift
-        log_tag $@
+        log_tag "$@"
         ;;
     *)
         if echo $cmd | egrep '^[0-9a-f]+$' &> /dev/null ; then
             $0 edit $cmd
         else
-            $log $@
+            $log "$@"
         fi
         ;;
 esac
