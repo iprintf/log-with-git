@@ -95,20 +95,32 @@ choice_id() {
     # echo "$list"
     # echo "=================="
     while read line ; do
-        let n++
         read ids[$n] date time title <<< \
             $(awk -F'|' '{print $1,$2,$3}' <<< "$line")
         # echo "${ids[$n]}", $id, $date, $time, $title
         # awk -F'|' '{print $1,$2,$3,$4}' <<< "$line"
         id=${ids[$n]:0:7}
-        show[$n]="\033[32m$n.\033[33m$id\033[37m($date $time)\033[0m: $title"
+        i="\033[32m%4d.\033[33m$id\033[37m($date $time)\033[0m: $title\n"
+        show[$n]=$(printf "$i" "$n")
+        # show[$n]="\033[32m$n.\033[33m$id\033[37m($date $time)\033[0m: $title"
+        let n++
     done <<< "$list"
 
+    # 小于等于10条记录选择编辑, 否则只是less查看
+    if test "$n" -gt 10 ; then
+        for i in $(seq 0 $[n - 1]) ; do
+            echo -e "${show[$i]}"
+        done | less -XRF
+        myexit
+    fi
+
     while true ; do
-        for i in $(seq 1 $n) ; do
+        for i in $(seq 0 $[n - 1]) ; do
             echo -e "${show[$i]}"
         done
-        read -p "choice> " line
+        read -n 1 -p "choice> " line
+        test "$line" == "q" && myexit
+        echo
         egrep -q '^[0-9]+$' &> /dev/null <<< "$line" || continue
         test -z "${ids[$line]}" && continue
         logID="${ids[$line]}"
@@ -137,6 +149,14 @@ get_id() {
     fi
 }
 
+# 列表选择编辑
+choice_edit() {
+    logID=""
+    get_id "$@"
+    test -z "$logID" && myexit "没有匹配到ID!"
+    $0 edit "$logID"
+}
+
 log_edit() {
     # 临时文件必须不存在，否则视为上次编辑出错
     # 分别取出编辑指定日志的字段进行组合到临时文件中(数据本身解密)
@@ -150,9 +170,9 @@ log_edit() {
     id="$logID"
 
     # 判断是否为GPG加密日志，如果不是则使用普通edit
-    if ! $log list $id -f "%d" | grep 'BEGIN PGP MESSAGE' &> /dev/null
+    if ! $log list "$id" -f "%d" | grep 'BEGIN PGP MESSAGE' &> /dev/null
     then
-        kvimopt="'$vimopt'" $log edit "$@"
+        kvimopt="'$vimopt'" $log edit "$id"
         return
     fi
 
@@ -204,10 +224,7 @@ log_tag() {
         $log list -f '%g' | sed -r 's/,/\n/g'  \
                | sort | uniq -c | sort -rn | less
     else
-        logID=""
-        get_id -S "tag/$1/"
-        test -z "$logID" && myexit "没有匹配到ID!"
-        $0 edit "$logID"
+        choice_edit -S "tag/$1/"
     fi
 }
 
@@ -217,6 +234,7 @@ gpg="gpg --batch -q -r iprintf@qq.com"
 # test -z $klogrc && log="note -F $HOME/.logenrc" || log="note -F $klogrc"
 # test -z $klogrc && log="note -F $HOME/.logtest" || log="note -F $klogrc"
 test -z $klogrc && log="note" || log="note -F $klogrc"
+test -z $kdytime && kdytime="-mt"
 
 cmd=${1-list}
 
@@ -246,8 +264,44 @@ case "$cmd" in
         shift
         log_tag "$@"
         ;;
+    time)
+        shift
+        choice_edit $kdytime "$@"
+        ;;
+    year|y)
+        shift
+        test -z "$1" && t=$(date +%Y) || t="$1"
+        choice_edit $kdytime "$t"
+        ;;
+    month|m)
+        shift
+        test -z "$1" && t=$(date +%Y%m) || t="$(date +%Y)$1"
+        choice_edit $kdytime "$t:"
+        ;;
+    day|d)
+        shift
+        if test -z "$1" ; then
+            t=$(date +%Y%m%d)
+        else
+            t="$1"
+            if egrep -q '^\-[0-9]+$' &> /dev/null <<< "$t"; then
+                t="$(date -d "$t day" +%Y%m%d)"
+            else
+                t="$(date +%Y%m)$1"
+            fi
+        fi
+        # echo $t
+        choice_edit $kdytime "$t"
+        ;;
+    week|w)
+        shift
+        t=$(date +%w)
+        let t--
+        t=$(date -d "$(date +%F) -$t day" +%Y%m%d)
+        choice_edit $kdytime "$t:"
+        ;;
     *)
-        if echo $cmd | egrep '^[0-9a-f]+$' &> /dev/null ; then
+        if egrep -q '^-?[0-9a-f]+$' &> /dev/null <<< "$cmd"; then
             $0 edit $cmd
         else
             $log "$@"
