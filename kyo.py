@@ -154,7 +154,7 @@ def getConf(config):#{
     global kconfig
 
     kconfig = {'tag': '', 'scene': '', 'people': '', 'cline': 10,
-               'editor': 'vim ', 'vimopt': '"+set ff=unix" "+set foldlevel=0"',
+               'editor': 'vim ', 'vimopt': '"+set ff=unix foldlevel=0"',
                'delim': '# Log Info {\n%s\n# Log Info }'}
 
     confKeys = config.keys()
@@ -163,7 +163,11 @@ def getConf(config):#{
     kconfig['people'] = 'defaultPeople' in confKeys and config['defaultPeople']
     kconfig['delim'] = 'infoDelim' in confKeys and config['infoDelim']
     kconfig['cline'] = 'listCL' in confKeys and config['listCL']
-    kconfig['vimopt'] = 'vimOpt' in confKeys and config['vimOpt']
+    if 'kvimopt' in os.environ:
+        kconfig['vimopt'] = os.environ['kvimopt'];
+    else:
+        kconfig['vimopt'] = 'vimOpt' in confKeys and config['vimOpt']
+
     kconfig['editor'] = 'editor' in confKeys and config['editor'] + ' '
     if kconfig['editor'] == 'vim ':
         kconfig['editor'] += kconfig['vimopt'] + ' '
