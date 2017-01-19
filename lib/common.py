@@ -75,7 +75,8 @@ def editContent(content=None):
         cmd += ' ' + kyo.kconfig['vimopt']
     else:
         cmd = kyo.kconfig['editor'] + tmpfile.name
-
+    #  print(cmd)
+    #  kyo.quit()
     out = shell_exec(cmd)
     if out == False:
         return content

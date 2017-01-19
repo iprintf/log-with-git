@@ -26,7 +26,7 @@ log_add() {
     vim "+set ff=unix" "+set foldlevel=0" $tmpfile
 
     test ! -e "$tmpfile" && return 1
-    filesize=$(wc -c "$tmpfile" | awk '{print $1}')
+    local filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
 
@@ -42,20 +42,21 @@ log_add() {
     return 1
 }
 
+# 抽取日志字段组合标题与头信息
 parse_header() {
     local id=$1
     test -z "$id" && myexit "没有指定ID!"
 
-    subject=$($log list $id -f '%s')
+    local subject=$($log list $id -f '%s')
     test -z "$subject" && myexit "没有匹配到指定日志!"
 
-    time=$($log list $id -f '%t')
+    local time=$($log list $id -f '%t')
     test -z "$time" && myexit "指定日志格式有误!"
     time="#    time   = $time"
 
-    scene=$($log list $id -f '%c')
-    people=$($log list $id -f '%p')
-    tag=$($log list $id -f '%g')
+    local scene=$($log list $id -f '%c')
+    local people=$($log list $id -f '%p')
+    local tag=$($log list $id -f '%g')
 
     echo "$subject"
     echo
@@ -67,16 +68,17 @@ parse_header() {
     echo '# Log Info }'
 }
 
+# 解密日志组合字段到临时文件中，打印文件名
 get_defile() {
     local id=$1
     # 抽取日志字段解密组合到临时文件中
-    header=$(parse_header $id)
+    local header=$(parse_header $id)
     test $? -ne 0 && myexit $header
-    data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
+    local data=$($log list $id -f "%d" | $gpg -d 2> /dev/null)
     test $? -ne 0 && myexit "GPG解密失败，请检查!"
 
     #生成临时文件存储要编辑的内容(用于对比编辑后是否修改了内容)
-    oldfile=$(mktemp)
+    local oldfile=$(mktemp)
     cat > "$oldfile" << EOF
 $header
 
@@ -85,24 +87,77 @@ EOF
     echo $oldfile
 }
 
+# 配合get_id函数使用，有多条记录选择打印ID
+choice_id() {
+    local line show ids n=0 id date time title i
+    local list="$1"
+
+    # echo "$list"
+    # echo "=================="
+    while read line ; do
+        let n++
+        read ids[$n] date time title <<< \
+            $(awk -F'|' '{print $1,$2,$3}' <<< "$line")
+        # echo "${ids[$n]}", $id, $date, $time, $title
+        # awk -F'|' '{print $1,$2,$3,$4}' <<< "$line"
+        id=${ids[$n]:0:7}
+        show[$n]="\033[32m$n.\033[33m$id\033[37m($date $time)\033[0m: $title"
+    done <<< "$list"
+
+    while true ; do
+        for i in $(seq 1 $n) ; do
+            echo -e "${show[$i]}"
+        done
+        read -p "choice> " line
+        egrep -q '^[0-9]+$' &> /dev/null <<< "$line" || continue
+        test -z "${ids[$line]}" && continue
+        logID="${ids[$line]}"
+        break
+    done
+}
+
+# 根据参数自动获取ID, 如果只有一条记录则直接返回ID，有多条记录则进入选择ID
+get_id() {
+    local opt="$1"
+    # 如果没有参数则默认为-1
+    test -z "$opt" && opt=-1 || opt="$@"
+    # echo "$log list $opt"
+    # $log list $opt -f "%i"
+    # 获取指定条件的列表, 字段以|为分隔符
+    local list=$($log list $opt -f "%I|%mtk|%s")
+    # 程序出错或没有记录报错
+    test $? -ne 0 -o "x$list" == "x" && myexit "程序出错: 没有匹配到数据!"
+    # 获取列表个数
+    local line=$(wc -l <<< "$list")
+    # 如果只有一条记录则返回sha1值
+    if test "$line" -eq 1 ; then
+        logID=$(awk -F'|' '{print $1}' <<< "$list")
+    else
+        choice_id "$list"
+    fi
+}
+
 log_edit() {
     # 临时文件必须不存在，否则视为上次编辑出错
     # 分别取出编辑指定日志的字段进行组合到临时文件中(数据本身解密)
     # 启动编辑器进行编辑，编辑完成退出后取出数据字段进行加密
     # 再通过log edit ID -s -r file来更新日志程序
     # test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
-    test -z "$1" && id=-1 || id="$1"
-    echo "$1" | egrep '^\-[0-9]+$' &> /dev/null && id=-1
+    local id
+    logID=""
+    get_id "$1"
+    test -z "$logID" && myexit "没有匹配到ID!"
+    id="$logID"
 
     # 判断是否为GPG加密日志，如果不是则使用普通edit
     if ! $log list $id -f "%d" | grep 'BEGIN PGP MESSAGE' &> /dev/null
     then
-        $log edit "$@"
+        kvimopt="'$vimopt'" $log edit "$@"
         return
     fi
 
     # 获取解密后数据及文件头的组合临时文件
-    oldfile=$(get_defile $id)
+    local oldfile=$(get_defile $id)
     test ! -f "$oldfile" && myexit $oldfile
 
     # 生成编辑的临时文件，数据来自于$oldfile
@@ -113,7 +168,7 @@ log_edit() {
     vim "$vimopt" "$tmpfile"
 
     # 文件内容为空或强制退出的视为不保存此时的编辑
-    filesize=$(wc -c "$tmpfile" | awk '{print $1}')
+    local filesize=$(wc -c "$tmpfile" | awk '{print $1}')
     test "$filesize" -eq 0 && return 1
     test "$(vim_last_cmd)" == ":q!" && return 1
 
@@ -125,8 +180,8 @@ log_edit() {
     rm $oldfile -f
 
     # 分别取出字段，对数据进行加密再组合输入到日志系统中
-    subject=$(sed '/# \?log \?Info \?}/I,$d' "$tmpfile")
-    data=$(sed '1,2d' "$tmpfile"                                    \
+    local subject=$(sed '/# \?log \?Info \?}/I,$d' "$tmpfile")
+    local data=$(sed '1,2d' "$tmpfile"                              \
             | sed '/# \?Log \?Info \?{/I,/# \?Log \?Info \?}/Id'    \
             | sed '/./,$!d' | $gpg -ae)
     cat > "$tmpfile" << EOF
@@ -140,34 +195,8 @@ EOF
     return 1
 }
 
-list_choice_edit() {
-    #未完成，选择后与ID的对应关系没有建立起来
-    local list="$1" id
-    test -z "$list" && return 1
-    while true
-    do
-        echo "$list"
-        read -p "choice num> " id
-        if egrep -q '^q(u(it?)?)?$' &> /dev/null <<< "$id" ; then
-            break
-        fi
-    done
-}
 
-list_display() {
-    local list="$1"
-    test -z "$list" && return 1
-    local n=0 id date time title
-    while read line
-    do
-        let n++
-        read id date time title <<< \
-                $(awk -F'[()]' '{print $1,$2,$3,$4}' <<< $line)
-        echo -ne "\033[32m$n.\033[33m$id\033[37m($date $time)"
-        echo -e "\033[0m$title"
-    done <<< "$list"
-}
-
+# tag命令的实现函数
 log_tag() {
     if test -z "$1" ; then
         $log list -f '%g' | sort | uniq -c | sort -rn | less
@@ -175,14 +204,10 @@ log_tag() {
         $log list -f '%g' | sed -r 's/,/\n/g'  \
                | sort | uniq -c | sort -rn | less
     else
-        local list=$($log list -S "tag/$1/" -f "%i(%mtk): %s")
-        local line=$(wc -l <<< "$list")
-        if test "x$list" != "x" -a "$line" -eq 1 ; then
-            $0 edit $(awk -F"(" '{print $1}' <<< "$list")
-        else
-            # list_choice_edit "$(list_display "$list")"
-            list_display "$list"
-        fi
+        logID=""
+        get_id -S "tag/$1/"
+        test -z "$logID" && myexit "没有匹配到ID!"
+        $0 edit "$logID"
     fi
 }
 
