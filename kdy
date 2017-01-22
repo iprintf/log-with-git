@@ -23,7 +23,7 @@ log_add() {
     # test -e "$tmpfile" && myexit "为什么会存在此文件，请检查!"
     tmpfile=$(mktemp)
 
-    vim "+set ff=unix" "+set foldlevel=0" $tmpfile
+    vim "+set ff=unix foldlevel=0" $tmpfile
 
     test ! -e "$tmpfile" && return 1
     local filesize=$(wc -c "$tmpfile" | awk '{print $1}')
