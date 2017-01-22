@@ -21,7 +21,12 @@ def parseArgs(args): #{
     ln = len(args)
     #  如果没有参数则进入单行列表
     if ln == 1:
-        args.extend(['list', '-f', '\033[33m%i\033[37m(%mtk)\033[0m: %s'])
+        if 'klineformat' in os.environ:
+            formatStr = os.environ['klineformat']
+        else:
+            formatStr = '\033[33m%i\033[37m(%mtk)\033[0m: %s'
+            formatStr += ' \033[34;1m[%g]\033[0m'
+        args.extend(['list', '-f', formatStr])
 
     #  如果是编辑日志，修改编辑标识，如果没有参数则默认编辑最后一条日志
     global isEdit, isRepair, isQuiet
