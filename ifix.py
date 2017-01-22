@@ -122,7 +122,7 @@ def _source(errFileLists): #{
         if errFile['op'] == 'A':
             print(cs('--- 添加失败操作没有原日志内容!', '31;1'))
             return
-        out = shell_exec('log list ' + errFile['id'])
+        out = shell_exec('note list ' + errFile['id'])
         if out == False:
             print(cs('--- 没有对应的日志，建议修复或删除此错误!', '31;1'))
 
@@ -146,9 +146,9 @@ def _open(errFileLists): #{
     def run(errFile, ind):
         cmd = ''
         if errFile['op'] == 'A':
-            cmd = 'log add -e < ' + errFile['file']
+            cmd = 'note add -e < ' + errFile['file']
         elif errFile['op'] == 'E':
-            cmd = 'log edit ' + errFile['id'] + ' -e -r ' + errFile['file']
+            cmd = 'note edit ' + errFile['id'] + ' -e -r ' + errFile['file']
         out = shell_exec(cmd)
         if out == True:
             _delErrFile(ind, errFileLists)
@@ -160,9 +160,9 @@ def _repair(errFileLists): #{
     def run(errFile, ind):
         cmd = ''
         if errFile['op'] == 'A':
-            cmd = 'log add < ' + errFile['file']
+            cmd = 'note add < ' + errFile['file']
         elif errFile['op'] == 'E':
-            cmd = 'log edit ' + errFile['id'] + ' -s -r ' + errFile['file']
+            cmd = 'note edit ' + errFile['id'] + ' -s -r ' + errFile['file']
         out = shell_exec(cmd)
         if out == True:
             _delErrFile(ind, errFileLists)
