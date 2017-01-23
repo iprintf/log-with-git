@@ -300,6 +300,13 @@ case "$cmd" in
         t=$(date -d "$(date +%F) -$t day" +%Y%m%d)
         choice_edit $kdytime "$t:"
         ;;
+    lock)
+        shift
+        #立即清除密码缓存, 下次解密需要输入密码
+        which gpg-connect-agent &> /dev/null || myexit "请安装gunpg-agent!"
+        gpg-connect-agent reloadagent /bye
+        myexit
+        ;;
     *)
         if egrep -q '^-?[0-9a-f]+$' &> /dev/null <<< "$cmd"; then
             $0 edit $cmd
