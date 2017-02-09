@@ -303,7 +303,7 @@ class App:
             os.system('rm -rf ' + dataDir)
         stat    = os.system('git shadow-clone %s %s' % (remote, dataDir))
         if not stat:
-            stat = os.system('log || log man unity')
+            stat = os.system('note || note man unity')
         exit(stat)
 
 
