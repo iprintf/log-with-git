@@ -236,9 +236,31 @@ kyo_log_file() {
         test ! -f "$1" && myexit "必须指定有效文件路径!"
         cat "$1" | $gpg -e | base64 | kdy add -m "$1" -e
     else
-        local file=/dev/shm/kyo_log.file
-        $0 list "$1" -f '%d' | base64 -d | $gpg > $file
-        test -e $file && soffice --view $file && rm $file -f
+        local tag=$($0 list "$1" -f "%g")
+        local logo=$(awk -F',' '{print $1}' <<< "$tag")
+        if test "x$logo" != "xfile" ; then
+            $0 edit "$1"
+        else
+            local file_type=$(awk -F',' '{print $2}' <<< "$tag")
+            local file=/dev/shm/kyo_log_file.$file_type
+            $0 list "$1" -f '%d' | base64 -d | $gpg > $file
+            test ! -e $file && my_exit "文件解密失败!"
+            case "$file_type" in
+                doc|docx|xls|ppt)
+                    local program='soffice --view '
+                ;;
+                pdf)
+                    local program='evince'
+                    ;;
+                jpg|jpeg|png|gif)
+                    local program='eog'
+                    ;;
+                *)
+                    local program=''
+                    ;;
+            esac
+            test ! -z "$program" && $program $file && rm $file -f
+        fi
     fi
 }
 
