@@ -238,7 +238,7 @@ kyo_log_file() {
     else
         local file=/dev/shm/kyo_log.file
         $0 list "$1" -f '%d' | base64 -d | $gpg > $file
-        test -e $file && soffice $file && rm $file -f
+        test -e $file && soffice --view $file && rm $file -f
     fi
 }
 
