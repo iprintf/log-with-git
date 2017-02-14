@@ -228,6 +228,20 @@ log_tag() {
     fi
 }
 
+# file命令的实现函数
+kyo_log_file() {
+    test -z "$1" && myexit "请指定要打开文件的ID或指定添加文件的路径!"
+    if test -f "$1" ; then
+        test -z "$1" &&  myexit "必须指定要添加的文件路径!"
+        test ! -f "$1" && myexit "必须指定有效文件路径!"
+        cat "$1" | $gpg -e | base64 | kdy add -m "$1" -e
+    else
+        local file=/dev/shm/kyo_log.file
+        $0 list "$1" -f '%d' | base64 -d | $gpg > $file
+        test -e $file && soffice $file && rm $file -f
+    fi
+}
+
 # log="note -F $HOME/.logenrc"
 gpg="gpg --batch -q -r iprintf@qq.com"
 
@@ -242,6 +256,10 @@ case "$cmd" in
     add|a)
         shift
         $log add "$@"
+        ;;
+    file)
+        shift
+        kyo_log_file "$@"
         ;;
     en)
         shift
